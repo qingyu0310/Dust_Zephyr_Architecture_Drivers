@@ -1,0 +1,47 @@
+config DEV_GPIO
+    bool "启动GPIO简单操作的设备类"
+    select GPIO
+    default n
+    help
+        启动GPIO简单操作的设备类
+
+config DEV_PWM
+    bool "启动PWM简单操作的设备类"
+    select PWM
+    default n
+    help
+        启动PWM简单操作的设备类
+
+config COM_UART
+    bool "启动UART通讯类"
+    select SERIAL
+    default n
+    help
+        启动UART通讯类
+
+config COM_CAN
+    bool "启动CAN通讯类"
+    select CAN
+    select MCAN_HPMICRO
+    default n
+    help
+        启动CAN通讯类
+
+config DRI_PRINTK
+    bool "Printk驱动"
+    select SERIAL
+    select CONSOLE
+    select UART_CONSOLE
+    select PRINTK_FMT_FLOAT
+    default n
+    help
+        启动printk调试
+
+config DRI_SHELL
+bool "Printk驱动"
+    select SHELL
+    default n
+    help
+        shell命令行
+    
+
