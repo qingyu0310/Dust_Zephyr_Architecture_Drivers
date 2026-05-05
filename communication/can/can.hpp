@@ -46,6 +46,15 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/printk.h>
 
+enum CanIndex : uint8_t
+{
+    CAN1 = 0,
+    CAN2,
+    CAN3,
+    CAN4,
+    CAN5,
+};
+
 class Can final
 {
 public:
