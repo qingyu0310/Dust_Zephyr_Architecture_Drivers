@@ -55,7 +55,7 @@ uint16_t Uart::Read(uint8_t* buf, uint16_t max_len)
     uint16_t cnt = 0;
     while (cnt < max_len && tail_ != head_) {
         buf[cnt++] = rx_buf_[tail_];
-        tail_ = (tail_ + 1) % sizeof(rx_buf_);
+        tail_ = (tail_ + 1) % kMaxBufSize;
     }
     return cnt;
 }
@@ -160,7 +160,7 @@ uint16_t UartDma::Read(uint8_t* buf, uint16_t max_len)
     uint16_t cnt = 0;
     while (cnt < max_len && tail_ != head_) {
         buf[cnt++] = rx_buf_[tail_];
-        tail_ = (tail_ + 1) % sizeof(rx_buf_);
+        tail_ = (tail_ + 1) % kMaxBufSize * 2;
     }
     return cnt;
 }
