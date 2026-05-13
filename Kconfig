@@ -1,47 +1,41 @@
+# drivers/Kconfig — 底层硬件驱动抽象
+# 提供 GPIO/PWM/UART/CAN 等外设驱动，以及 printk/shell 调试通道
+# 每个 config 直接 select 对应的 Zephyr 子系统驱动符号
+# 头文件在 drivers/communication/ 和 drivers/ 下
 config DEV_GPIO
+    default n
     bool "启动GPIO简单操作的设备类"
     select GPIO
-    default n
     help
         启动GPIO简单操作的设备类
 
 config DEV_PWM
+    default n
     bool "启动PWM简单操作的设备类"
     select PWM
-    default n
     help
         启动PWM简单操作的设备类
 
 config COM_UART
-    bool "启动UART通讯类"
-    select SERIAL
     default n
+    bool "UART 中断驱动（双缓冲）"
+    select SERIAL
+    select UART_INTERRUPT_DRIVEN
+    select UART_ASYNC_API
     help
-        启动UART通讯类
+        启动 UART 中断驱动，带双缓冲 ping-pong 接收
+
+config COM_UART_DMA
+    default n
+    bool "UART DMA 驱动（异步接收）"
+    select SERIAL
+    select UART_ASYNC_API
+    help
+        异步 DMA UART 驱动，使用 UART_ASYNC_API 回调接收 + 阻塞发送
 
 config COM_CAN
-    bool "启动CAN通讯类"
+    default n
+    bool "CAN 驱动"
     select CAN
-    select MCAN_HPMICRO
-    default n
     help
-        启动CAN通讯类
-
-config DRI_PRINTK
-    bool "Printk驱动"
-    select SERIAL
-    select CONSOLE
-    select UART_CONSOLE
-    select PRINTK_FMT_FLOAT
-    default n
-    help
-        启动printk调试
-
-config DRI_SHELL
-bool "Printk驱动"
-    select SHELL
-    default n
-    help
-        shell命令行
-    
-
+        启动 CAN 驱动。需要 board DTS 配置 CAN 节点并使能对应 CAN 控制器驱动。
