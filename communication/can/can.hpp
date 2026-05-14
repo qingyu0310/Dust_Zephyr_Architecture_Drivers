@@ -14,11 +14,11 @@
 
 enum CanIndex : uint8_t
 {
-    CAN_1 = 0,
-    CAN_2,
-    CAN_3,
-    CAN_4,
-    CAN_5,
+    USER_CAN1 = 0,
+    USER_CAN2,
+    USER_CAN3,
+    USER_CAN4,
+    USER_CAN5,
 };
 
 class Can final
