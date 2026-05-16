@@ -2,8 +2,8 @@
  * @file uart.hpp
  * @author qingyu
  * @brief UART 驱动 — 中断 / DMA + 通用 RxStream 接口
- * @version 0.3
- * @date 2026-05-13
+ * @version 0.4
+ * @date 2026-05-16
  */
 
 #pragma once
@@ -15,12 +15,11 @@
 
 using UartRxCallback = void (*)(uint8_t* data, uint16_t len);
 
-/*  通用 UART 接收流接口                                                  */
 class RxStream {
 public:
     struct Config {
         uint16_t buf_size   = 128;
-        int32_t  rx_timeout = 0;      // 仅 DMA 版有效
+        int32_t  rx_timeout = 0;
     };
 
     virtual ~RxStream() = default;
@@ -29,7 +28,6 @@ public:
     virtual uint16_t Read(uint8_t* buf, uint16_t max_len) = 0;
 };
 
-/*  中断驱动 UART（环缓冲区）                                              */
 class Uart final : public RxStream
 {
     friend void uart_irq_handler(const struct device* dev, void* user_data);
@@ -42,9 +40,7 @@ public:
 
 private:
     static constexpr uint16_t kMaxBufSize = 512;
-
     const struct device* dev_ = nullptr;
-
     uint16_t buf_size_ = 128;
     uint8_t  rx_buf_[kMaxBufSize] {};
     uint16_t head_     = 0;
@@ -52,7 +48,6 @@ private:
     k_sem*   notify_sem_ = nullptr;
 };
 
-/*  DMA UART                                                              */
 class UartDma final : public RxStream
 {
     friend void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* user_data);
@@ -75,9 +70,12 @@ private:
     uint16_t tail_        = 0;
     uint8_t  cur_buf_     = 0;
     int32_t  rx_timeout_  = 0;
-    k_sem    tx_sem_;
     bool     ready_       = false;
 
     UartRxCallback rx_cb_ = nullptr;
     k_sem*   notify_sem_  = nullptr;
+
+    // TX 单缓冲
+    char     tx_buf_[128];   // DMA 发送缓冲
+    bool     tx_busy_ = false;
 };

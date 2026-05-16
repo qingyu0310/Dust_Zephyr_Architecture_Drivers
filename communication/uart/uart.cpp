@@ -2,11 +2,12 @@
  * @file uart.cpp
  * @author qingyu
  * @brief UART 驱动实现
- * @version 0.3
- * @date 2026-05-13
+ * @version 0.4
+ * @date 2026-05-16
  */
 
 #include "uart.hpp"
+#include <string.h>
 
 #ifdef CONFIG_COM_UART
 
@@ -116,7 +117,7 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
         }
         case UART_TX_DONE:
         {
-            k_sem_give(&self->tx_sem_);
+            self->tx_busy_ = false;
             break;
         }
         default:
@@ -133,7 +134,7 @@ bool UartDma::Init(const struct device* dev, const Config& cfg)
     rx_cb_      = nullptr;
     rx_timeout_ = cfg.rx_timeout;
     ready_      = false;
-    k_sem_init(&tx_sem_, 1, 1);
+    tx_busy_    = false;
 
     if (!device_is_ready(dev_)) {
         return false;
@@ -168,12 +169,18 @@ uint16_t UartDma::Read(uint8_t* buf, uint16_t max_len)
 bool UartDma::Send(const uint8_t* data, uint32_t len)
 {
     if (!ready_) return false;
+    if (len == 0 || len >= (int)sizeof(tx_buf_)) return false;
 
-    if (k_sem_take(&tx_sem_, K_FOREVER) != 0) {
+    if (tx_busy_) return false;   // 上一帧还没发完
+
+    memcpy(tx_buf_, data, len);
+    tx_busy_ = true;
+
+    if (uart_tx(dev_, reinterpret_cast<uint8_t*>(tx_buf_), len, 0) != 0) {
+        tx_busy_ = false;
         return false;
     }
-
-    return uart_tx(dev_, data, len, SYS_FOREVER_US) == 0;
+    return true;
 }
 
 void UartDma::Stop()
