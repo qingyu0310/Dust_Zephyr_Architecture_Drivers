@@ -10,6 +10,9 @@
 
 #include "zephyr/device.h"
 #include <zephyr/drivers/can.h>
+#ifdef CONFIG_COM_CAN_STBY
+#include <zephyr/drivers/gpio.h>
+#endif
 #include <zephyr/sys/printk.h>
 
 enum CanIndex : uint8_t
@@ -26,6 +29,15 @@ class Can final
 public:
     using TxCallback = void (*)(const struct device *dev, int error, void *user_data);
     using RxCallback = void (*)(struct can_frame &frame, void *user_data);
+
+#ifdef CONFIG_COM_CAN_STBY
+    static void InitStby(const struct gpio_dt_spec *stby)
+    {
+        if (device_is_ready(stby->port)) {
+            gpio_pin_configure_dt(stby, GPIO_OUTPUT_LOW);
+        }
+    }
+#endif
 
     bool Init(const struct device *dev, const struct can_filter &filter, can_mode_t ctrl_mode = CAN_MODE_NORMAL)
     {

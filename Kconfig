@@ -39,3 +39,12 @@ config COM_CAN
     select CAN
     help
         启动 CAN 驱动。需要 board DTS 配置 CAN 节点并使能对应 CAN 控制器驱动。
+
+config COM_CAN_STBY
+    default n
+    bool "CAN STBY 引脚初始化"
+    depends on COM_CAN
+    select GPIO
+    help
+        初始化 CAN 收发器 STBY 引脚为低电平（正常模式）。
+        引脚定义在 board DTS overlay 中。
