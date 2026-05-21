@@ -9,12 +9,12 @@ config DEV_GPIO
     help
         启动GPIO简单操作的设备类
 
-config DEV_PWM
-    default n
-    bool "启动PWM简单操作的设备类"
-    select PWM
-    help
-        启动PWM简单操作的设备类
+# config DEV_PWM
+#     default n
+#     bool "启动PWM简单操作的设备类"
+#     select PWM
+#     help
+#         启动PWM简单操作的设备类
 
 config COM_UART
     default n

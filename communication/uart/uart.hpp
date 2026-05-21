@@ -66,6 +66,7 @@ private:
 
     uint8_t  dma_buf_[2][kMaxBufSize] {};
     uint8_t  rx_buf_[kMaxBufSize * 2] {};
+    uint16_t dma_buf_size_ = 0;
     uint16_t head_        = 0;
     uint16_t tail_        = 0;
     uint8_t  cur_buf_     = 0;

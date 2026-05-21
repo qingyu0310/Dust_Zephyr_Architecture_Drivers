@@ -106,15 +106,20 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
         case UART_RX_BUF_REQUEST:
         {
             self->cur_buf_ = 1 - self->cur_buf_;
-            uart_rx_buf_rsp(dev, self->dma_buf_[self->cur_buf_], sizeof(self->dma_buf_[0]));
+            (void)uart_rx_buf_rsp(dev, self->dma_buf_[self->cur_buf_], self->dma_buf_size_);
             break;
         }
         case UART_RX_DISABLED:
         {
-            self->cur_buf_ = 1 - self->cur_buf_;
-            uart_rx_enable(dev, self->dma_buf_[self->cur_buf_], sizeof(self->dma_buf_[0]), self->rx_timeout_);
+            self->cur_buf_ = 0;
+            int ret = uart_rx_enable(dev, self->dma_buf_[self->cur_buf_], self->dma_buf_size_, self->rx_timeout_);
+            if (ret < 0) {
+                self->ready_ = false;
+            }
             break;
         }
+        case UART_RX_STOPPED:
+            break;
         case UART_TX_DONE:
         {
             self->tx_busy_ = false;
@@ -144,6 +149,7 @@ bool UartDma::Init(const struct device* dev, const Config& cfg)
     if (ret < 0) return false;
 
     uint16_t bs = cfg.buf_size > kMaxBufSize ? kMaxBufSize : cfg.buf_size;
+    dma_buf_size_ = bs;
     ret = uart_rx_enable(dev_, dma_buf_[0], bs, rx_timeout_);
     if (ret < 0) return false;
 

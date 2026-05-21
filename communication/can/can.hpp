@@ -13,7 +13,6 @@
 #ifdef CONFIG_COM_CAN_STBY
 #include <zephyr/drivers/gpio.h>
 #endif
-#include <zephyr/sys/printk.h>
 
 enum CanIndex : uint8_t
 {
@@ -43,13 +42,11 @@ public:
     {
         dev_ = dev;
         if (!device_is_ready(dev_)) {
-            printk("Error: CAN device %s is not ready\n", dev_->name);
             return false;
         }
 
         filter_id_ = can_add_rx_filter(dev_, rx_callback, this, &filter);
         if (filter_id_ < 0) {
-            printk("Error: CAN add RX filter failed (%d)\n", filter_id_);
             return false;
         }
 
@@ -58,7 +55,6 @@ public:
         }
 
         if (can_start(dev_) != 0) {
-            printk("Error: CAN start failed\n");
             return false;
         }
 
@@ -80,7 +76,8 @@ public:
     bool Send(const struct can_frame *frame)
     {
         if (dev_ == nullptr) return false;
-        return can_send(dev_, frame, K_NO_WAIT, tx_callback, this) == 0;
+        int ret = can_send(dev_, frame, K_NO_WAIT, tx_callback, this);
+        return ret == 0;
     }
 
     const struct device *Device() const { return dev_; }
