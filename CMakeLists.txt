@@ -8,7 +8,13 @@ if(CONFIG_COM_UART OR CONFIG_COM_UART_DMA)
 endif()
 
 if(CONFIG_COM_CAN)
+	target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/can/can.cpp)
 	target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/can)
+endif()
+
+if(CONFIG_COM_SPI)
+	target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/spi/spi.cpp)
+	target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/spi)
 endif()
 
 if(CONFIG_COM_RS485)

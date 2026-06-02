@@ -33,6 +33,14 @@ config COM_UART_DMA
     help
         异步 DMA UART 驱动，使用 UART_ASYNC_API 回调接收 + 阻塞发送
 
+config COM_SPI
+    default n
+    bool "SPI driver"
+    select SPI
+    select GPIO
+    help
+        Enable the lightweight SPI wrapper in drivers/communication/spi.
+
 config COM_CAN
     default n
     bool "CAN 驱动"
