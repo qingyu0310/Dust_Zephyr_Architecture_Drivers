@@ -57,6 +57,27 @@ config COM_RS485
     help
         Enable the RS485 half-duplex driver using UART_ASYNC_API and a DE/RE GPIO.
 
+config COM_USB
+    default n
+    bool "USB CDC ACM driver"
+    depends on DT_HAS_ZEPHYR_CDC_ACM_UART_ENABLED
+    select USB_DEVICE_STACK_NEXT
+    select USBD_CDC_ACM_CLASS
+    select CDC_ACM_SERIAL_INITIALIZE_AT_BOOT
+    select SERIAL
+    select UART_INTERRUPT_DRIVEN
+    select UART_LINE_CTRL
+    help
+        Enable the USB CDC ACM driver using the Zephyr new USB device stack.
+
+config USB_DEVICE_FORCE_FULL_SPEED
+    default y if COM_USB
+    bool "Force HPM USB device controller to full speed"
+    depends on UDC_HPMICRO && USBD_MAX_SPEED_FULL
+    help
+        HPM SDK USB DCD checks this macro to set PORTSC.PFSC. Zephyr's
+        USBD_MAX_SPEED_FULL does not automatically propagate to that SDK code.
+
 config COM_CAN_STBY
     default n
     bool "Initialize CAN STBY pin"
