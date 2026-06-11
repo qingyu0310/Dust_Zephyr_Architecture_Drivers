@@ -12,6 +12,12 @@
 
 #ifdef CONFIG_COM_RS485
 
+/**
+ * @brief UART 事件回调（RS485 内部使用）
+ *
+ * 处理数据接收、缓冲切换、DMA 重启、发送完成及异常等事件。
+ * 发送完成后自动将方向引脚切回接收。
+ */
 void rs485_uart_callback(const struct device* dev, struct uart_event* evt, void* user_data)
 {
     auto* self = static_cast<Rs485*>(user_data);
@@ -58,6 +64,9 @@ void rs485_uart_callback(const struct device* dev, struct uart_event* evt, void*
     }
 }
 
+/**
+ * @brief 通过 RxStream 通用配置初始化
+ */
 bool Rs485::Init(const struct device* dev, const RxStream::Config& cfg)
 {
     Config rs485_cfg {};
@@ -66,6 +75,9 @@ bool Rs485::Init(const struct device* dev, const RxStream::Config& cfg)
     return Init(dev, rs485_cfg);
 }
 
+/**
+ * @brief 通过 RS485 完整配置初始化
+ */
 bool Rs485::Init(const struct device* dev, const Config& cfg)
 {
     dev_         = dev;
@@ -112,11 +124,17 @@ bool Rs485::Init(const struct device* dev, const Config& cfg)
     return true;
 }
 
+/**
+ * @brief 注册接收通知信号量
+ */
 void Rs485::SetNotify(struct k_sem* sem)
 {
     notify_sem_ = sem;
 }
 
+/**
+ * @brief 读取接收环形缓冲
+ */
 uint16_t Rs485::Read(uint8_t* buf, uint16_t max_len)
 {
     uint16_t cnt = 0;
@@ -127,6 +145,9 @@ uint16_t Rs485::Read(uint8_t* buf, uint16_t max_len)
     return cnt;
 }
 
+/**
+ * @brief 发送一帧（自动切方向引脚）
+ */
 bool Rs485::Send(const uint8_t* data, uint32_t len)
 {
     if (!ready_) return false;
@@ -150,6 +171,9 @@ bool Rs485::Send(const uint8_t* data, uint32_t len)
     return true;
 }
 
+/**
+ * @brief 停止 RS485 接收
+ */
 void Rs485::Stop()
 {
     ready_ = false;
@@ -158,6 +182,10 @@ void Rs485::Stop()
     (void)SetDirection(rx_level_);
 }
 
+/**
+ * @brief 设置方向引脚电平
+ * @param level   GPIO 输出值
+ */
 bool Rs485::SetDirection(int level)
 {
     if (dir_ == nullptr) {
@@ -167,19 +195,31 @@ bool Rs485::SetDirection(int level)
     return gpio_pin_set_dt(dir_, level) == 0;
 }
 
+/**
+ * @brief 将 DMA 收到的一帧数据存入环形缓冲
+ */
 void Rs485::StoreRx(const uint8_t* data, uint16_t len)
 {
     if (data == nullptr || len == 0) {
         return;
     }
 
-    for (uint16_t i = 0; i < len; i++)
+    // 计算可用空间（保留一格区分空/满）
+    uint16_t used = (head_ - tail_ + sizeof(rx_buf_)) % sizeof(rx_buf_);
+    uint16_t free = sizeof(rx_buf_) - 1 - used;
+    if (len > free) {
+        len = free;
+    }
+    if (len > 0) 
     {
-        uint16_t next = (head_ + 1) % sizeof(rx_buf_);
-        if (next != tail_) {
-            rx_buf_[head_] = data[i];
-            head_ = next;
+        uint16_t to_end = sizeof(rx_buf_) - head_;
+        if (len <= to_end) {
+            memcpy(&rx_buf_[head_], data, len);
+        } else {
+            memcpy(&rx_buf_[head_], data, to_end);
+            memcpy(&rx_buf_[0], data + to_end, len - to_end);
         }
+        head_ = (head_ + len) % sizeof(rx_buf_);
     }
 
     if (notify_sem_) {

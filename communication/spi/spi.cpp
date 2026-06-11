@@ -23,24 +23,36 @@ bool Spi::Init(const struct spi_dt_spec& spec)
     return true;
 }
 
+/**
+ * @brief 全双工收发（底层 spi_buf_set 接口）
+ */
 bool Spi::Transceive(const struct spi_buf_set* tx, const struct spi_buf_set* rx) const
 {
     if (!ready_) return false;
     return spi_transceive_dt(&spec_, tx, rx) == 0;
 }
 
+/**
+ * @brief 半双工写
+ */
 bool Spi::Send(const struct spi_buf_set* tx) const
 {
     if (!ready_) return false;
     return spi_write_dt(&spec_, tx) == 0;
 }
 
+/**
+ * @brief 半双工读
+ */
 bool Spi::Read(const struct spi_buf_set* rx) const
 {
     if (!ready_) return false;
     return spi_read_dt(&spec_, rx) == 0;
 }
 
+/**
+ * @brief 全双工收发（裸指针接口）
+ */
 bool Spi::Transceive(const uint8_t* tx_data, uint8_t* rx_data, uint32_t len)
 {
     if (!PrepareTx(tx_data, len) || !PrepareRx(rx_data, len)) {
@@ -50,6 +62,9 @@ bool Spi::Transceive(const uint8_t* tx_data, uint8_t* rx_data, uint32_t len)
     return Transceive(&tx_set_, &rx_set_);
 }
 
+/**
+ * @brief 半双工写（裸指针接口）
+ */
 bool Spi::Send(const uint8_t* data, uint32_t len)
 {
     if (!PrepareTx(data, len)) {
@@ -59,6 +74,9 @@ bool Spi::Send(const uint8_t* data, uint32_t len)
     return Send(&tx_set_);
 }
 
+/**
+ * @brief 半双工读（裸指针接口）
+ */
 bool Spi::Read(uint8_t* data, uint32_t len)
 {
     if (!PrepareRx(data, len)) {
@@ -68,17 +86,26 @@ bool Spi::Read(uint8_t* data, uint32_t len)
     return Read(&rx_set_);
 }
 
+/**
+ * @brief 释放 SPI 总线
+ */
 bool Spi::Release() const
 {
     if (!ready_) return false;
     return spi_release_dt(&spec_) == 0;
 }
 
+/**
+ * @brief 检查 SPI 是否就绪
+ */
 bool Spi::IsReady() const
 {
     return ready_ && spi_is_ready_dt(&spec_);
 }
 
+/**
+ * @brief 准备发送缓冲描述符
+ */
 bool Spi::PrepareTx(const uint8_t* data, uint32_t len)
 {
     if (data == nullptr || len == 0) {
@@ -90,6 +117,9 @@ bool Spi::PrepareTx(const uint8_t* data, uint32_t len)
     return true;
 }
 
+/**
+ * @brief 准备接收缓冲描述符
+ */
 bool Spi::PrepareRx(uint8_t* data, uint32_t len)
 {
     if (data == nullptr || len == 0) {

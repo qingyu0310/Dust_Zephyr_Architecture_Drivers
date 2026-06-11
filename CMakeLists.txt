@@ -30,10 +30,10 @@ if(CONFIG_COM_RS485)
 endif()
 
 if(CONFIG_COM_USB)
+	zephyr_include_directories(${SDK_GLUE_DIR}/samples/cherryusb/config)
 	target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/usb/usb.cpp)
 	target_include_directories(app PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/communication/usb
 		${CMAKE_CURRENT_SOURCE_DIR}/communication/uart
 	)
 endif()
-

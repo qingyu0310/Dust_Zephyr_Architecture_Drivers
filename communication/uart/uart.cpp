@@ -11,6 +11,11 @@
 
 #ifdef CONFIG_COM_UART
 
+/**
+ * @brief UART IRQ 中断处理函数
+ *
+ * FIFO 有数据时逐字节读取并存入 Uart 环形缓冲，然后通知信号量。
+ */
 void uart_irq_handler(const struct device* dev, void* user_data)
 {
     auto* self = static_cast<Uart*>(user_data);
@@ -30,6 +35,9 @@ void uart_irq_handler(const struct device* dev, void* user_data)
     }
 }
 
+/**
+ * @brief 初始化 UART 中断模式驱动
+ */
 bool Uart::Init(const struct device* dev, const Config& cfg)
 {
     dev_ = dev;
@@ -46,11 +54,17 @@ bool Uart::Init(const struct device* dev, const Config& cfg)
     return true;
 }
 
+/**
+ * @brief 注册接收通知信号量
+ */
 void Uart::SetNotify(struct k_sem* sem)
 {
     notify_sem_ = sem;
 }
 
+/**
+ * @brief 读取接收环形缓冲
+ */
 uint16_t Uart::Read(uint8_t* buf, uint16_t max_len)
 {
     uint16_t cnt = 0;
@@ -61,6 +75,9 @@ uint16_t Uart::Read(uint8_t* buf, uint16_t max_len)
     return cnt;
 }
 
+/**
+ * @brief 轮询发送（阻塞）
+ */
 bool Uart::Send(const uint8_t* data, uint32_t len) const
 {
     for (uint32_t i = 0; i < len; i++) {
@@ -73,6 +90,12 @@ bool Uart::Send(const uint8_t* data, uint32_t len) const
 
 #ifdef CONFIG_COM_UART_DMA
 
+/**
+ * @brief UART DMA 回调处理函数
+ *
+ * 处理 UART_RX_RDY（数据就绪）、UART_RX_BUF_REQUEST（换缓冲）、
+ * UART_RX_DISABLED（重新使能）、UART_TX_DONE（发送完成）等事件。
+ */
 void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* user_data)
 {
     auto* self = static_cast<UartDma*>(user_data);
@@ -88,13 +111,21 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
                 if (self->rx_cb_) {
                     self->rx_cb_(const_cast<uint8_t*>(data), len);
                 } else {
-                    for (uint16_t i = 0; i < len; i++)
-                    {
-                        uint16_t next = (self->head_ + 1) % sizeof(self->rx_buf_);
-                        if (next != self->tail_) {
-                            self->rx_buf_[self->head_] = data[i];
-                            self->head_ = next;
+                    // 计算可用空间（保留一格区分空/满）
+                    uint16_t used = (self->head_ - self->tail_ + sizeof(self->rx_buf_)) % sizeof(self->rx_buf_);
+                    uint16_t free = sizeof(self->rx_buf_) - 1 - used;
+                    if (len > free) {
+                        len = free;
+                    }
+                    if (len > 0) {
+                        uint16_t to_end = sizeof(self->rx_buf_) - self->head_;
+                        if (len <= to_end) {
+                            memcpy(&self->rx_buf_[self->head_], data, len);
+                        } else {
+                            memcpy(&self->rx_buf_[self->head_], data, to_end);
+                            memcpy(&self->rx_buf_[0], data + to_end, len - to_end);
                         }
+                        self->head_ = (self->head_ + len) % sizeof(self->rx_buf_);
                     }
                     if (self->notify_sem_) {
                         k_sem_give(self->notify_sem_);
@@ -130,6 +161,9 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
     }
 }
 
+/**
+ * @brief 初始化 UART DMA 模式驱动
+ */
 bool UartDma::Init(const struct device* dev, const Config& cfg)
 {
     dev_        = dev;
@@ -157,11 +191,17 @@ bool UartDma::Init(const struct device* dev, const Config& cfg)
     return true;
 }
 
+/**
+ * @brief 注册接收通知信号量
+ */
 void UartDma::SetNotify(struct k_sem* sem)
 {
     notify_sem_ = sem;
 }
 
+/**
+ * @brief 读取接收环形缓冲
+ */
 uint16_t UartDma::Read(uint8_t* buf, uint16_t max_len)
 {
     uint16_t cnt = 0;
@@ -172,12 +212,16 @@ uint16_t UartDma::Read(uint8_t* buf, uint16_t max_len)
     return cnt;
 }
 
+/**
+ * @brief 异步 DMA 发送
+ */
 bool UartDma::Send(const uint8_t* data, uint32_t len)
 {
     if (!ready_) return false;
     if (len == 0 || len >= (int)sizeof(tx_buf_)) return false;
 
-    if (tx_busy_) return false;   // 上一帧还没发完
+    // 上一帧还没发完
+    if (tx_busy_) return false;
 
     memcpy(tx_buf_, data, len);
     tx_busy_ = true;
@@ -189,6 +233,9 @@ bool UartDma::Send(const uint8_t* data, uint32_t len)
     return true;
 }
 
+/**
+ * @brief 停止 DMA 接收
+ */
 void UartDma::Stop()
 {
     ready_ = false;
