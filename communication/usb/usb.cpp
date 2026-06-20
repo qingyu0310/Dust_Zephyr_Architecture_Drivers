@@ -25,8 +25,8 @@ static constexpr uint8_t  CDC_INT_EP  = 0x83;   // interrupt（通知）
 // 配置描述符总长：USB 标准配置头 + CDC ACM 复合描述符
 static constexpr uint16_t USB_CONFIG_SIZE = 9 + CDC_ACM_DESCRIPTOR_LEN;
 
-static constexpr uint16_t kUsbMaxBufSize = 512;  // 接收 DMA 乒乓缓冲大小
-static constexpr uint16_t kUsbTxBufSize  = 512;  // 发送 DMA 缓冲大小
+static constexpr uint16_t kUsbMaxBufSize  = 512;  // 接收 DMA 乒乓缓冲大小
+static constexpr uint16_t kUsbTxBufSize   = 512;  // 发送 DMA 缓冲大小
 
 /* --------------------------------------------------------------------------
  * USB 描述符
@@ -323,8 +323,8 @@ bool Usb::Init(const Config& cfg)
     usbd_desc_register(busid_, &cdc_descriptor);
     usbd_add_interface(busid_, usbd_cdc_acm_init_intf(busid_, &cdc_intf0));
     usbd_add_interface(busid_, usbd_cdc_acm_init_intf(busid_, &cdc_intf1));
-    usbd_add_endpoint(busid_, &cdc_out_ep);
-    usbd_add_endpoint(busid_, &cdc_in_ep);
+    usbd_add_endpoint (busid_, &cdc_out_ep);
+    usbd_add_endpoint (busid_, &cdc_in_ep);
 
     if (usbd_initialize(busid_, reg_base, usb_cdc_event_handler) != 0) {
         LOG_ERR("usbd_initialize failed busid=%d base=0x%x", busid_, reg_base);
@@ -362,7 +362,8 @@ uint16_t Usb::Read(uint8_t* buf, uint16_t max_len)
     uint16_t available = (head_ - tail_ + buf_size_) % buf_size_;
     uint16_t cnt = (max_len < available) ? max_len : available;
 
-    if (cnt > 0) {
+    if (cnt > 0) 
+    {
         uint16_t to_end = buf_size_ - tail_;
         if (cnt <= to_end) {
             memcpy(buf, &rx_buf_[tail_], cnt);
@@ -452,7 +453,7 @@ void Usb::OnBulkOut(uint8_t busid, uint8_t ep, uint32_t nbytes)
 {
     // 乒乓切换 DMA 缓冲
     uint8_t index = read_buffer_index_;
-    read_buffer_index_ = (index == 0U) ? 1U : 0U;
+    read_buffer_index_ = (index == 0) ? 1 : 0;
 
     if (nbytes > kMaxBufSize) {
         nbytes = kMaxBufSize;
@@ -472,7 +473,7 @@ void Usb::OnBulkIn(uint8_t busid, uint8_t ep, uint32_t nbytes)
     uint16_t mps = usbd_get_ep_mps(busid, ep);
 
     // ZLP — 如果数据恰好是端点大小的整数倍，发 ZLP 收尾
-    if (mps != 0U && (nbytes % mps) == 0U && nbytes != 0U) {
+    if (mps != 0 && (nbytes % mps) == 0 && nbytes != 0) {
         if (usbd_ep_start_write(busid, ep, nullptr, 0) == 0) {
             return;
         }

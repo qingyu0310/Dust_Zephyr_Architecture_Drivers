@@ -112,9 +112,11 @@
 
 /* CherryUSB 回调（C 函数，转进 Usb 对象） */
 extern "C" {
+
 void usb_cdc_event_handler(uint8_t busid, uint8_t event);
 void usb_cdc_bulk_out(uint8_t busid, uint8_t ep, uint32_t nbytes);
 void usb_cdc_bulk_in(uint8_t busid, uint8_t ep, uint32_t nbytes);
+
 }
 
 /**
@@ -144,17 +146,8 @@ public:
     bool     Send(const uint8_t* data, uint32_t len);
     uint8_t  GetSpeed() const;
 
-    /**
-     * @brief 驱动初始化完成
-     */
     bool IsReady()      const { return ready_; }
-    /**
-     * @brief USB 已枚举，CDC ACM 配置设置完成
-     */
     bool IsConfigured() const { return configured_; }
-    /**
-     * @brief 上一帧发送未完成，不可发新数据
-     */
     bool IsTxBusy()     const { return tx_busy_; }
 
 private:
