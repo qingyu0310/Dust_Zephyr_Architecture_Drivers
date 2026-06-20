@@ -15,6 +15,8 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/logging/log.h>
 
+#pragma message "Compiling Drivers/Communication Usb"
+
 LOG_MODULE_REGISTER(usb, LOG_LEVEL_INF);
 
 // CDC ACM 端点号
@@ -28,10 +30,9 @@ static constexpr uint16_t USB_CONFIG_SIZE = 9 + CDC_ACM_DESCRIPTOR_LEN;
 static constexpr uint16_t kUsbMaxBufSize  = 512;  // 接收 DMA 乒乓缓冲大小
 static constexpr uint16_t kUsbTxBufSize   = 512;  // 发送 DMA 缓冲大小
 
-/* --------------------------------------------------------------------------
- * USB 描述符
- * -------------------------------------------------------------------------- */
-
+//
+// USB 描述符
+//
 static const uint8_t device_descriptor[] {
     USB_DEVICE_DESCRIPTOR_INIT(USB_2_0, 0xEF, 0x02, 0x01, USBD_VID, USBD_PID, 0x0100, 0x01)
 };
@@ -137,9 +138,9 @@ static const struct usb_descriptor cdc_descriptor {
     nullptr,
 };
 
-/* --------------------------------------------------------------------------
- * 运行时对象
- * -------------------------------------------------------------------------- */
+//
+// 运行时对象
+//
 
 // DMA 直接访问，必须放在 nocache 区域
 static USB_NOCACHE_RAM_SECTION USB_MEM_ALIGNX uint8_t read_buffer[2][kUsbMaxBufSize];
@@ -196,9 +197,9 @@ static Usb* UsbInstance(uint8_t busid)
     return usb_instances[busid];
 }
 
-/* --------------------------------------------------------------------------
- * CherryUSB 回调（C 函数 → Usb 对象转发）
- * -------------------------------------------------------------------------- */
+//
+// CherryUSB 回调（C 函数 → Usb 对象转发）
+//
 
 /**
  * @brief 事件回调转发
@@ -256,9 +257,9 @@ extern "C" void usbd_cdc_acm_get_line_coding(uint8_t busid, uint8_t intf, cdc_li
     }
 }
 
-/* --------------------------------------------------------------------------
- * Usb 方法
- * -------------------------------------------------------------------------- */
+//
+// Usb 方法
+//
 
 /**
  * @brief 通过 Zephyr 设备树初始化

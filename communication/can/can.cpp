@@ -9,6 +9,8 @@
 #include "can.hpp"
 #include <zephyr/logging/log.h>
 
+#pragma message "Compiling Drivers/Communicaiton Can"
+
 LOG_MODULE_REGISTER(can, LOG_LEVEL_INF);
 
 /**

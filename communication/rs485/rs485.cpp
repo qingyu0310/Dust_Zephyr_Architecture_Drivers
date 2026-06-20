@@ -10,6 +10,8 @@
 #include <zephyr/logging/log.h>
 #include <string.h>
 
+#pragma message "Compiling Drivers/Communicaiton RS485"
+
 LOG_MODULE_REGISTER(rs485, LOG_LEVEL_INF);
 
 /**

@@ -12,6 +12,8 @@
 #include "input.hpp"
 #include <zephyr/logging/log.h>
 
+#pragma message "Compiling Drivers/Device Input"
+
 LOG_MODULE_REGISTER(gpio_in, LOG_LEVEL_INF);
 
 /**

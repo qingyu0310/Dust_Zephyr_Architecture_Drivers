@@ -149,16 +149,16 @@ private:
     uint8_t  dma_buf_[2][kMaxBufSize] {};
     uint8_t  rx_buf_[kMaxBufSize * 2] {};   // 接收合并缓冲
     uint16_t dma_buf_size_ = 0;             // DMA 单缓冲大小
-    uint16_t head_        = 0;              // 环形缓冲写指针
-    uint16_t tail_        = 0;              // 环形缓冲读指针
-    uint8_t  cur_buf_     = 0;              // 当前使用的 DMA 缓冲索引
-    int32_t  rx_timeout_  = 0;              // 接收超时（ms）
-    bool     ready_       = false;          // 初始化完成标志
+    uint16_t head_         = 0;             // 环形缓冲写指针
+    uint16_t tail_         = 0;             // 环形缓冲读指针
+    uint8_t  cur_buf_      = 0;             // 当前使用的 DMA 缓冲索引
+    int32_t  rx_timeout_   = 0;             // 接收超时（ms）
+    bool     ready_        = false;         // 初始化完成标志
 
     UartRxCallback rx_cb_ = nullptr;        // 外部接收回调（替代环形缓冲）
     k_sem*   notify_sem_  = nullptr;        // 接收通知信号量
 
     // TX 单缓冲
-    char     tx_buf_[128];   // 发送缓冲区
+    char     tx_buf_[128];                  // 发送缓冲区
     bool     tx_busy_ = false;
 };

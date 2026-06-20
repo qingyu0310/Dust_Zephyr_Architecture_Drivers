@@ -9,6 +9,8 @@
 #include "spi.hpp"
 #include <zephyr/logging/log.h>
 
+#pragma message "Compiling Drivers/Communication SPI"
+
 LOG_MODULE_REGISTER(spi, LOG_LEVEL_INF);
 
 /**

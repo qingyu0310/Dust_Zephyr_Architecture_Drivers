@@ -23,13 +23,13 @@ drivers/
 └── Kconfig
 ```
 
-communication/
-    通讯外设类。UART、CAN、SPI、RS485、USB 等。
-    封装 Zephyr 通讯外设 API，提供收发和控制接口。
+### communication/
 
-device/
-    设备通用抽象层。GPIO 输入输出、PWM 输出等简单硬件操作。
-    封装底层硬件控制，对外提供简洁的读写接口。
+通讯外设类。UART、CAN、SPI、RS485、USB 等。封装 Zephyr 通讯外设 API，提供收发和控制接口。
+
+### device/
+
+设备通用抽象层。GPIO 输入输出、PWM 输出等简单硬件操作。封装底层硬件控制，对外提供简洁的读写接口。
 
 驱动层为基础通讯外设和简单设备操作抽象，需配合上层模块使用，不单独创建线程。
 

@@ -12,6 +12,8 @@
 #include "pwm.hpp"
 #include <zephyr/logging/log.h>
 
+#pragma message "Compiling Drivers/Device Pwm"
+
 LOG_MODULE_REGISTER(pwm, LOG_LEVEL_INF);
 
 /**

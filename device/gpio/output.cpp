@@ -12,6 +12,8 @@
 #include "output.hpp"
 #include <zephyr/logging/log.h>
 
+#pragma message "Compiling Drivers/Device Output"
+
 LOG_MODULE_REGISTER(gpio_out, LOG_LEVEL_INF);
 
 /**

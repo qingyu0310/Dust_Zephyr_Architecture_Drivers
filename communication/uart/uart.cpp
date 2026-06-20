@@ -14,6 +14,8 @@ LOG_MODULE_REGISTER(uart, LOG_LEVEL_INF);
 
 #ifdef CONFIG_COM_UART
 
+#pragma message "Compiling Drivers/Communication Uart"
+
 /**
  * @brief UART IRQ 中断处理函数
  *
@@ -104,6 +106,8 @@ bool Uart::Send(const uint8_t* data, uint32_t len) const
 
 #ifdef CONFIG_COM_UART_DMA
 
+#pragma message "Compiling Drivers/Communication Uart DMA"
+
 /**
  * @brief UART DMA 回调处理函数
  *
@@ -124,7 +128,9 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
             {
                 if (self->rx_cb_) {
                     self->rx_cb_(const_cast<uint8_t*>(data), len);
-                } else {
+                } 
+                else 
+                {
                     // 计算可用空间（保留一格区分空/满）
                     uint16_t used = (self->head_ - self->tail_ + sizeof(self->rx_buf_)) % sizeof(self->rx_buf_);
                     uint16_t free = sizeof(self->rx_buf_) - 1 - used;
