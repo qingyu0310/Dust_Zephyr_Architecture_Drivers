@@ -73,6 +73,7 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/kernel.h>
 #include <stdint.h>
+#include "bipbuf.hpp"
 
 using UartRxCallback = void (*)(uint8_t* data, uint16_t len);
 
@@ -116,12 +117,11 @@ public:
 private:
     static constexpr uint16_t kMaxBufSize = 512;
 
-    const struct device* dev_ = nullptr;  // UART 设备
-    uint16_t buf_size_ = 128;             // 环形缓冲大小
-    uint8_t  rx_buf_[kMaxBufSize] {};     // 接收环形缓冲
-    uint16_t head_     = 0;               // 环形缓冲写指针
-    uint16_t tail_     = 0;               // 环形缓冲读指针
-    k_sem*   notify_sem_ = nullptr;       // 接收通知信号量
+    const struct device* dev_ = nullptr;            // UART 设备
+
+    BipBuffer<kMaxBufSize> rx_bip_ {};              // 双区缓冲
+    uint16_t buf_size_ = 128;                       // 配置的缓冲大小
+    k_sem*   notify_sem_ = nullptr;                 // 接收通知信号量
 };
 
 /**
@@ -147,18 +147,16 @@ private:
 
     // DMA 双缓冲
     uint8_t  dma_buf_[2][kMaxBufSize] {};
-    uint8_t  rx_buf_[kMaxBufSize * 2] {};   // 接收合并缓冲
-    uint16_t dma_buf_size_ = 0;             // DMA 单缓冲大小
-    uint16_t head_         = 0;             // 环形缓冲写指针
-    uint16_t tail_         = 0;             // 环形缓冲读指针
-    uint8_t  cur_buf_      = 0;             // 当前使用的 DMA 缓冲索引
-    int32_t  rx_timeout_   = 0;             // 接收超时（ms）
-    bool     ready_        = false;         // 初始化完成标志
+    BipBuffer<kMaxBufSize * 2> rx_bip_ {};              // 双区缓冲
+    uint16_t dma_buf_size_ = 0;                         // DMA 单缓冲大小
+    uint8_t  cur_buf_      = 0;                         // 当前使用的 DMA 缓冲索引
+    int32_t  rx_timeout_   = 0;                         // 接收超时（ms）
+    bool     ready_        = false;                     // 初始化完成标志
 
-    UartRxCallback rx_cb_ = nullptr;        // 外部接收回调（替代环形缓冲）
-    k_sem*   notify_sem_  = nullptr;        // 接收通知信号量
+    UartRxCallback rx_cb_ = nullptr;                    // 外部接收回调（替代环形缓冲）
+    k_sem*   notify_sem_  = nullptr;                    // 接收通知信号量
 
     // TX 单缓冲
-    char     tx_buf_[128];                  // 发送缓冲区
+    char     tx_buf_[128];                              // 发送缓冲区
     bool     tx_busy_ = false;
 };

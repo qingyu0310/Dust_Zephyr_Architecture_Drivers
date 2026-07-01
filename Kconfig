@@ -22,6 +22,7 @@ config COM_UART
     select SERIAL
     select UART_INTERRUPT_DRIVEN
     select UART_ASYNC_API
+    select BUF_BIPBUF
     help
         Enable the UART interrupt driver with ping-pong receive buffering.
 
@@ -30,6 +31,7 @@ config COM_UART_DMA
     bool "UART DMA driver"
     select SERIAL
     select UART_ASYNC_API
+    select BUF_BIPBUF
     help
         Enable the asynchronous DMA UART driver.
 

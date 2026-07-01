@@ -28,10 +28,10 @@ void uart_irq_handler(const struct device* dev, void* user_data)
     if (uart_irq_rx_ready(dev)) {
         uint8_t byte;
         while (uart_fifo_read(dev, &byte, 1) > 0) {
-            uint16_t next = (self->head_ + 1) % sizeof(self->rx_buf_);
-            if (next != self->tail_) {
-                self->rx_buf_[self->head_] = byte;
-                self->head_ = next;
+            uint8_t* p = self->rx_bip_.Reserve(1);
+            if (p) {
+                *p = byte;
+                self->rx_bip_.Commit(1);
             }
         }
         if (self->notify_sem_) {
@@ -51,8 +51,6 @@ bool Uart::Init(const struct device* dev, const Config& cfg)
         return false;
     }
 
-    head_     = 0;
-    tail_     = 0;
     buf_size_ = cfg.buf_size > kMaxBufSize ? kMaxBufSize : cfg.buf_size;
 
     uart_irq_callback_user_data_set(dev_, uart_irq_handler, this);
@@ -74,20 +72,13 @@ void Uart::SetNotify(struct k_sem* sem)
  */
 uint16_t Uart::Read(uint8_t* buf, uint16_t max_len)
 {
-    uint16_t available = (head_ - tail_ + kMaxBufSize) % kMaxBufSize;
-    uint16_t cnt = (max_len < available) ? max_len : available;
+    uint32_t size;
+    uint8_t* data = rx_bip_.GetContiguousReadBlock(size);
+    if (!data || size == 0) return 0;
 
-    if (cnt > 0) {
-        uint16_t to_end = kMaxBufSize - tail_;
-        if (cnt <= to_end) {
-            memcpy(buf, &rx_buf_[tail_], cnt);
-        } else {
-            memcpy(buf, &rx_buf_[tail_], to_end);
-            memcpy(buf + to_end, &rx_buf_[0], cnt - to_end);
-        }
-        tail_ = (tail_ + cnt) % kMaxBufSize;
-    }
-
+    uint16_t cnt = (max_len < size) ? max_len : size;
+    memcpy(buf, data, cnt);
+    rx_bip_.Decommit(cnt);
     return cnt;
 }
 
@@ -128,24 +119,13 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
             {
                 if (self->rx_cb_) {
                     self->rx_cb_(const_cast<uint8_t*>(data), len);
-                } 
-                else 
+                }
+                else
                 {
-                    // 计算可用空间（保留一格区分空/满）
-                    uint16_t used = (self->head_ - self->tail_ + sizeof(self->rx_buf_)) % sizeof(self->rx_buf_);
-                    uint16_t free = sizeof(self->rx_buf_) - 1 - used;
-                    if (len > free) {
-                        len = free;
-                    }
-                    if (len > 0) {
-                        uint16_t to_end = sizeof(self->rx_buf_) - self->head_;
-                        if (len <= to_end) {
-                            memcpy(&self->rx_buf_[self->head_], data, len);
-                        } else {
-                            memcpy(&self->rx_buf_[self->head_], data, to_end);
-                            memcpy(&self->rx_buf_[0], data + to_end, len - to_end);
-                        }
-                        self->head_ = (self->head_ + len) % sizeof(self->rx_buf_);
+                    uint8_t* p = self->rx_bip_.Reserve(len);
+                    if (p) {
+                        memcpy(p, data, len);
+                        self->rx_bip_.Commit(len);
                     }
                     if (self->notify_sem_) {
                         k_sem_give(self->notify_sem_);
@@ -187,8 +167,6 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
 bool UartDma::Init(const struct device* dev, const Config& cfg)
 {
     dev_        = dev;
-    head_       = 0;
-    tail_       = 0;
     cur_buf_    = 0;
     rx_cb_      = nullptr;
     rx_timeout_ = cfg.rx_timeout;
@@ -232,20 +210,13 @@ void UartDma::SetNotify(struct k_sem* sem)
  */
 uint16_t UartDma::Read(uint8_t* buf, uint16_t max_len)
 {
-    uint16_t available = (head_ - tail_ + sizeof(rx_buf_)) % sizeof(rx_buf_);
-    uint16_t cnt = (max_len < available) ? max_len : available;
+    uint32_t size;
+    uint8_t* data = rx_bip_.GetContiguousReadBlock(size);
+    if (!data || size == 0) return 0;
 
-    if (cnt > 0) {
-        uint16_t to_end = sizeof(rx_buf_) - tail_;
-        if (cnt <= to_end) {
-            memcpy(buf, &rx_buf_[tail_], cnt);
-        } else {
-            memcpy(buf, &rx_buf_[tail_], to_end);
-            memcpy(buf + to_end, &rx_buf_[0], cnt - to_end);
-        }
-        tail_ = (tail_ + cnt) % sizeof(rx_buf_);
-    }
-
+    uint16_t cnt = (max_len < size) ? max_len : size;
+    memcpy(buf, data, cnt);
+    rx_bip_.Decommit(cnt);
     return cnt;
 }
 
