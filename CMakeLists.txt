@@ -1,8 +1,10 @@
-if(CONFIG_DEV_GPIO)
-    target_sources(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/device/gpio/output.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/device/gpio/input.cpp
-    )
+if(CONFIG_DEV_GPIO_OUTPUT)
+    target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/gpio/output.cpp)
+    target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/gpio)
+endif()
+
+if(CONFIG_DEV_GPIO_INPUT)
+    target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/gpio/input.cpp)
     target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/gpio)
 endif()
 

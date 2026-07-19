@@ -2,12 +2,19 @@
 # 提供 GPIO/PWM/UART/CAN 等外设驱动，以及 printk/shell 调试通道
 # 每个 config 直接 select 对应的 Zephyr 子系统驱动符号
 
-config DEV_GPIO
+config DEV_GPIO_OUTPUT
     default n
-    bool "Enable simple GPIO device wrapper"
+    bool "Enable GPIO output wrapper"
     select GPIO
     help
-        Enable the lightweight GPIO wrappers in drivers/device/gpio.
+        Enable the GPIO output wrappers in drivers/device/gpio.
+
+config DEV_GPIO_INPUT
+    default n
+    bool "Enable GPIO input wrapper"
+    select GPIO
+    help
+        Enable the GPIO input wrappers in drivers/device/gpio.
 
 config DEV_PWM
     default n

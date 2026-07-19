@@ -99,6 +99,8 @@ public:
     virtual uint16_t Read(uint8_t* buf, uint16_t max_len) = 0;
 };
 
+#ifdef CONFIG_COM_UART
+
 /**
  * @brief UART 中断模式驱动
  *
@@ -123,6 +125,10 @@ private:
     uint16_t buf_size_ = 128;                       // 配置的缓冲大小
     k_sem*   notify_sem_ = nullptr;                 // 接收通知信号量
 };
+
+#endif // CONFIG_COM_UART
+
+#ifdef CONFIG_COM_UART_DMA
 
 /**
  * @brief UART DMA 模式驱动
@@ -160,3 +166,5 @@ private:
     char     tx_buf_[128];                              // 发送缓冲区
     bool     tx_busy_ = false;
 };
+
+#endif // CONFIG_COM_UART_DMA
