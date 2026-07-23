@@ -1,15 +1,16 @@
 ﻿/**
  * @file uart.hpp
  * @author qingyu
- * @brief UART DMA 椹卞姩 鈥?鍙岀紦鍐?DMA + Stream 鎺ュ彛
+ * @brief UART DMA 驱动 - 双缓冲 DMA + Stream 接口
  * @version 0.5
  * @date 2026-07-23
  *
- * # UART DMA 浣跨敤璇存槑
+ * # UART DMA 使用说明
  *
- * 鍙岀紦鍐?DMA 鎺ユ敹锛岄€傚悎楂橀€熻繛缁帴鏀躲€? *
- * ### 璁惧鏍? *
- * 椤圭洰 overlay 涓畾涔?alias锛? * ```dts
+ * 双缓冲 DMA 接收，适合高速连续接收。
+ * ### 设备树
+ * 项目 overlay 中定义 alias：
+ * ```dts
  * aliases {
  *     uart-remote = &uart4;
  * };
@@ -21,21 +22,24 @@
  *     select COM_UART_DMA
  * ```
  *
- * ### 鍒濆鍖? * ```cpp
+ * ### 初始化
+ * ```cpp
  * static UartDma uart;
  *
  * uart.Init(DEVICE_DT_GET(DT_ALIAS(uart_remote)));
  * ```
  *
- * ### 鎺ユ敹鍥炶皟
+ * ### 接收回调
  * ```cpp
  * uart.SetRxCallback([](uint8_t* data, uint16_t len) {
- *     // 澶勭悊鎺ユ敹鏁版嵁
+ *     // 处理接收数据
  * });
  * ```
  *
- * ### 鍙戦€? * ```cpp
- * uart.Send(data, len);  // DMA 寮傛鍙戦€? * ```
+ * ### 发送
+ * ```cpp
+ * uart.Send(data, len);  // DMA 异步发送
+ * ```
  *
  * @copyright Copyright (c) 2026
  */
@@ -52,17 +56,19 @@
 #ifdef CONFIG_COM_UART_DMA
 
 /**
- * @brief UART DMA 妯″紡椹卞姩
+ * @brief UART DMA 模式驱动
  *
- * 鍙岀紦鍐?DMA 鎺ユ敹 + 涓柇鍥炶皟锛屾敮鎸侀珮閫熻繛缁帴鏀躲€? */
+ * 双缓冲 DMA 接收 + 中断回调，支持高速连续接收。 
+ */
 class UartDma final : public Stream
 {
     friend void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* user_data);
 
 public:
-    struct Config {
+    struct Config 
+    {
         uart_config line_cfg {
-            0,
+            115200,
             UART_CFG_PARITY_NONE,
             UART_CFG_STOP_BITS_1,
             UART_CFG_DATA_BITS_8,
@@ -75,27 +81,33 @@ public:
     void     SetBaudrate(uint32_t baud);
     void     SetLineConfig(const uart_config& cfg);
 
+    bool     StartRx();
+    void     StopRx();
+
     uint16_t Read(uint8_t* buf, uint16_t max_len)    override;
     bool     Send(const uint8_t* data, uint32_t len) override;
 
-    void     Stop();
-
 private:
-    bool     apply_line_config();
     static constexpr uint16_t kMaxBufSize = 256;    // 缓冲区最大值
+
     uint8_t  dma_buf_[2][kMaxBufSize] {};           // 硬件 DMA 双缓冲
     uint8_t  cur_buf_ = 0;                          // 当前提交给硬件的 DMA buffer 索引
     bool     buf_free_[2] = {true, true};   // DMA buffer 空闲状态跟踪
+
     BipBuffer<kMaxBufSize * 2> rx_bip_ {};          // 软件缓冲队列
 
     uint8_t  tx_data_[128] {};                      // 发送缓冲
     uint8_t* tx_buf_ = tx_data_;                    // 指向发送缓冲
-    atomic_t  tx_busy_ = ATOMIC_INIT(0);
+    atomic_t tx_busy_ = ATOMIC_INIT(0);
 
     const device* dev_ = nullptr;
-    Config   config_ {};
-    atomic_t ready_ = ATOMIC_INIT(0);               // 初始化完成标志
+
+    Config      config_ {};
+    atomic_t    ready_ = ATOMIC_INIT(0);            // 初始化完成标志
+    k_spinlock  lock_;
     
+    bool ApplyLineConfig();
+
     void Reset()
     {
         cur_buf_ = 0;

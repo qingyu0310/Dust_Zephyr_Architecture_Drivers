@@ -126,7 +126,7 @@ bool UartDma::Init(const struct device* dev, const Config& cfg)
         return false;
     }
 
-    if (!apply_line_config()) {
+    if (!ApplyLineConfig()) {
         LOG_ERR("uart_configure failed");
         return false;
     }
@@ -141,18 +141,6 @@ bool UartDma::Init(const struct device* dev, const Config& cfg)
     atomic_set(&ready_, 1);
     LOG_INF("uart dma ready %s", dev->name);
     return true;
-}
-
-bool UartDma::apply_line_config()
-{
-    const auto& lc = config_.line_cfg;
-    
-    if (lc.baudrate == 0) {
-        LOG_ERR("line_cfg: not fully initialized");
-        return false;
-    }
-
-    return uart_configure(dev_, &config_.line_cfg) == 0;
 }
 
 /**
@@ -200,6 +188,7 @@ bool UartDma::Send(const uint8_t* data, uint32_t len)
     }
 
     memcpy(tx_buf_, data, len);
+
     atomic_set(&tx_busy_, 1);
     if (uart_tx(dev_, tx_buf_, len, 0) != 0)
     {
@@ -211,18 +200,53 @@ bool UartDma::Send(const uint8_t* data, uint32_t len)
 }
 
 /**
+ * @brief 重新启动 DMA 接收（Stop + SetLineConfig 后调用）
+ */
+bool UartDma::StartRx()
+{
+    int ret = uart_rx_enable(dev_, dma_buf_[0], kMaxBufSize, config_.base_cfg.rx_timeout);
+    if (ret < 0) {
+        LOG_ERR("rx_enable fail %d", ret);
+        return false;
+    }
+
+    buf_free_[0] = false;
+    atomic_set(&ready_, 1);
+    return true;
+}
+
+/**
+ * @brief 停止 DMA 接收
+ */
+void UartDma::StopRx()
+{
+    k_spinlock_key_t key = k_spin_lock(&lock_);
+
+    if (uart_rx_disable(dev_) == 0) {
+        atomic_set(&ready_, 0);
+    }
+    k_spin_unlock(&lock_, key);
+}
+
+/**
  * @brief 设置波特率（仅停止状态下可用）
  *
  * @param baud 波特率
  */
 void UartDma::SetBaudrate(uint32_t baud)
 {
+    k_spinlock_key_t key = k_spin_lock(&lock_);
+
     if (atomic_get(&ready_)) {
+        k_spin_unlock(&lock_, key);
         LOG_ERR("cannot set baudrate while uart is running");
         return;
     }
+
     config_.line_cfg.baudrate = baud;
-    if (!apply_line_config()) {
+    k_spin_unlock(&lock_, key);
+
+    if (!ApplyLineConfig()) {
         LOG_ERR("uart_configure failed");
     }
 }
@@ -234,24 +258,36 @@ void UartDma::SetBaudrate(uint32_t baud)
  */
 void UartDma::SetLineConfig(const uart_config& cfg)
 {
+    k_spinlock_key_t key = k_spin_lock(&lock_);
+
     if (atomic_get(&ready_)) {
+        k_spin_unlock(&lock_, key);
         LOG_ERR("cannot set line config while uart is running");
         return;
     }
+
     config_.line_cfg = cfg;
-    if (!apply_line_config()) {
+    k_spin_unlock(&lock_, key);
+
+    if (!ApplyLineConfig()) {
         LOG_ERR("uart_configure failed");
     }
 }
 
 /**
- * @brief 停止 DMA 接收
+ * @brief 应用线参数配置到硬件
+ * @return true 配置成功
  */
-void UartDma::Stop()
+bool UartDma::ApplyLineConfig()
 {
-    if (uart_rx_disable(dev_) == 0) {
-        atomic_set(&ready_, 0);
+    const auto& lc = config_.line_cfg;
+
+    if (lc.baudrate == 0) {
+        LOG_ERR("line_cfg: not fully initialized");
+        return false;
     }
+
+    return uart_configure(dev_, &config_.line_cfg) == 0;
 }
 
 #endif // CONFIG_COM_UART_DMA
