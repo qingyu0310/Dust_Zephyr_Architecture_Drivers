@@ -12,8 +12,6 @@
 
 LOG_MODULE_REGISTER(uart, LOG_LEVEL_INF);
 
-#ifdef CONFIG_COM_UART_DMA
-
 #pragma message "Compiling Drivers/Communication Uart DMA"
 
 /**
@@ -289,5 +287,3 @@ bool UartDma::ApplyLineConfig()
 
     return uart_configure(dev_, &config_.line_cfg) == 0;
 }
-
-#endif // CONFIG_COM_UART_DMA

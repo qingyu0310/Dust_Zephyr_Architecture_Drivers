@@ -53,8 +53,6 @@
 #include "bipbuf.hpp"
 #include "../stream.hpp"
 
-#ifdef CONFIG_COM_UART_DMA
-
 /**
  * @brief UART DMA 模式驱动
  *
@@ -96,7 +94,7 @@ private:
 
     BipBuffer<kMaxBufSize * 2> rx_bip_ {};          // 软件缓冲队列
 
-    uint8_t  tx_data_[128] {};                      // 发送缓冲
+    uint8_t  tx_data_[kMaxBufSize] {};              // 发送缓冲
     uint8_t* tx_buf_ = tx_data_;                    // 指向发送缓冲
     atomic_t tx_busy_ = ATOMIC_INIT(0);
 
@@ -117,7 +115,5 @@ private:
         atomic_set(&ready_, 0);
     }
 };
-
-#endif // CONFIG_COM_UART_DMA
 
 
