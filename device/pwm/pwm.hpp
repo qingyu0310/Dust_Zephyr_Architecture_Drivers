@@ -16,7 +16,7 @@
 class Pwm final
 {
 public:
-    bool init(const pwm_dt_spec spec);
+    bool init(const pwm_dt_spec& spec);
     bool SetPulse(uint32_t pulse);
     bool SetDuty(float duty);
     bool SetPeriodAndPulse(uint32_t period, uint32_t pulse);

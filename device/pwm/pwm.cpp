@@ -20,7 +20,7 @@ LOG_MODULE_REGISTER(pwm, LOG_LEVEL_INF);
  * @brief 初始化 PWM 输出
  * @param spec  设备树 PWM 规格
  */
-bool Pwm::init(const pwm_dt_spec spec)
+bool Pwm::init(const pwm_dt_spec& spec)
 {
     spec_ = spec;
     if (!device_is_ready(spec.dev)) {
@@ -36,6 +36,10 @@ bool Pwm::init(const pwm_dt_spec spec)
     return true;
 }
 
+/**
+ * @brief 设置脉宽（基于 spec_.period）
+ * @param pulse 脉宽 ns
+ */
 bool Pwm::SetPulse(uint32_t pulse)
 {
     int ret = pwm_set_pulse_dt(&spec_, pulse);
@@ -46,6 +50,10 @@ bool Pwm::SetPulse(uint32_t pulse)
     return true;
 }
 
+/**
+ * @brief 按占空比设置脉宽
+ * @param duty 占空比 0.0～1.0
+ */
 bool Pwm::SetDuty(float duty)
 {
     if (duty < 0.0f) {
@@ -59,6 +67,11 @@ bool Pwm::SetDuty(float duty)
     return SetPulse(pulse);
 }
 
+/**
+ * @brief 同时设置周期和脉宽
+ * @param period 周期 ns
+ * @param pulse  脉宽 ns
+ */
 bool Pwm::SetPeriodAndPulse(uint32_t period, uint32_t pulse)
 {
     int ret = pwm_set_dt(&spec_, period, pulse);
@@ -71,6 +84,7 @@ bool Pwm::SetPeriodAndPulse(uint32_t period, uint32_t pulse)
     return true;
 }
 
+/** @brief 停止输出（脉宽归零） */
 bool Pwm::Stop()
 {
     return SetPulse(0);
