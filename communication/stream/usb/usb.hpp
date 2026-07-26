@@ -11,7 +11,7 @@
  *
  * - RX 使用乒乓 DMA 双缓冲，收到数据后存入内部环形缓冲。
  * - TX 拷贝数据到内部缓冲后异步提交到 USB IN 端点。
- * - 对上层实现 `RxStream` 接口，`SetNotify()` + `Read()` 消费接收数据。
+ * - 通过 `SetNotify()` + `Read()` 消费接收数据。
  * - 主机侧枚举为标准 CDC ACM 虚拟串口。
  *
  * ## 设备树
@@ -48,12 +48,11 @@
  * {
  *     k_sem_init(&rx_sem, 0, 1);
  *
- *     const struct device *dev = DEVICE_DT_GET(DT_NODELABEL(cherryusb_usb0));
- *     RxStream::Config cfg {};
- *     cfg.buf_size   = 256;
- *     cfg.rx_timeout = 0;
+ *     Usb::Config cfg {};
+ *     cfg.busid = 0;
+ *     cfg.buf_size = 256;
  *
- *     usb.Init(dev, cfg);
+ *     usb.Init(cfg);
  *     usb.SetNotify(&rx_sem);
  * }
  * ```
@@ -106,9 +105,8 @@
 
 #pragma once
 
-#include "uart.hpp"
-
 #include <stdint.h>
+#include <zephyr/kernel.h>
 
 /* CherryUSB 回调（C 函数，转进 Usb 对象） */
 extern "C" {
@@ -120,29 +118,24 @@ void usb_cdc_bulk_in(uint8_t busid, uint8_t ep, uint32_t nbytes);
 }
 
 /**
- * @brief CDC ACM 串口设备驱动
- *
- * 封装 CherryUSB CDC ACM 的初始化、收发和事件处理，对外暴露 RxStream 接口。
+ * @brief CDC ACM 虚拟串口
  */
-class Usb final : public RxStream
+class Usb final
 {
     friend void usb_cdc_event_handler(uint8_t busid, uint8_t event);
     friend void usb_cdc_bulk_out(uint8_t busid, uint8_t ep, uint32_t nbytes);
     friend void usb_cdc_bulk_in(uint8_t busid, uint8_t ep, uint32_t nbytes);
 
 public:
-    /**
-     * @brief 初始化参数
-     */
-    struct Config : public RxStream::Config {
+    struct Config {
         uint8_t  busid    = 0;       // USB 总线号
         uint32_t reg_base = 0;       // USB 控制器寄存器基址，0=自动检测
+        uint16_t buf_size = 256;     // 接收环形缓冲大小
     };
 
-    bool     Init(const struct device* dev, const RxStream::Config& cfg) override;
     bool     Init(const Config& cfg);
-    void     SetNotify(struct k_sem* sem) override;
-    uint16_t Read(uint8_t* buf, uint16_t max_len) override;
+    void     SetNotify(k_sem* sem);
+    uint16_t Read(uint8_t* buf, uint16_t max_len);
     bool     Send(const uint8_t* data, uint32_t len);
     uint8_t  GetSpeed() const;
 

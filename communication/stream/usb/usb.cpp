@@ -262,24 +262,8 @@ extern "C" void usbd_cdc_acm_get_line_coding(uint8_t busid, uint8_t intf, cdc_li
 //
 
 /**
- * @brief 通过 Zephyr 设备树初始化
- * @param dev  USB 设备
- * @param cfg  接收缓冲配置
- */
-bool Usb::Init(const struct device* dev, const RxStream::Config& cfg)
-{
-    (void)dev;
-
-    Config usb_cfg {};
-    usb_cfg.buf_size   = cfg.buf_size;
-    usb_cfg.rx_timeout = cfg.rx_timeout;
-    usb_cfg.reg_base   = DefaultRegBase();
-    return Init(usb_cfg);
-}
-
-/**
- * @brief 通过手动参数初始化
- * @param cfg  完整配置（busid, reg_base, 缓冲大小等）
+ * @brief 初始化 USB
+ * @param cfg  配置（busid, reg_base, buf_size）
  */
 bool Usb::Init(const Config& cfg)
 {
