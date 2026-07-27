@@ -8,7 +8,7 @@
  * 职责：
  *   - Push（ISR 上下文）：写入数据，超出容量计数 overflow
  *   - Pop（线程上下文）：取出数据
- *   - Reset：清空数据和通知，重置 overflow 计数
+ *   - Reset：清空数据，重置 overflow 计数
  *
  * @copyright Copyright (c) 2026
  */
@@ -24,15 +24,12 @@
  * @brief USB 接收队列
  *
  * 内部使用 BipBuffer<1024>，通过 spinlock 保护 ISR/线程并发访问。
- * 内置 k_sem，Push 成功后自动 give，消费者可等待此 semaphore。
+ * 通知由 Usb 顶层的 Stream::sem_ 统一负责。
  */
 class UsbRxQueue final
 {
 public:
-    UsbRxQueue()
-    {
-        k_sem_init(&sem_, 0, 1);
-    }
+    UsbRxQueue() = default;
 
     /**
      * @brief 写入数据（ISR 或线程上下文）
@@ -52,8 +49,6 @@ public:
         memcpy(p, data, len);
         buf_.Commit(len);
         k_spin_unlock(&lock_, key);
-
-        k_sem_give(&sem_);
         return true;
     }
 
@@ -85,12 +80,14 @@ public:
     }
 
     /**
-     * @brief 复位 — 清 overflow + 重置 semaphore
+     * @brief 复位 — 清空数据并重置 overflow
      */
     void Reset()
     {
+        k_spinlock_key_t key = k_spin_lock(&lock_);
+        buf_.Reset();
         overflow_ = 0;
-        k_sem_reset(&sem_);
+        k_spin_unlock(&lock_, key);
     }
 
     /**
@@ -101,17 +98,8 @@ public:
         return overflow_;
     }
 
-    /**
-     * @brief 获取通知 semaphore（供外部等待数据用）
-     */
-    struct k_sem* GetSem()
-    {
-        return &sem_;
-    }
-
 private:
     BipBuffer<1024> buf_ {};
     k_spinlock      lock_ {};
-    k_sem           sem_ {};
     uint32_t        overflow_ = 0;
 };

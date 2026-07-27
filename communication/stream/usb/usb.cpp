@@ -19,41 +19,27 @@ namespace usb {
 /**
  * @brief 初始化
  *
- * 初始化顺序：cdc_ → device_
+ * 初始化顺序：device_.Init （含 CDC ACM Init） → Start
  */
-bool Usb::Init(const Config& cfg)
+bool Usb::Init(const UsbHal::Config& cfg, const UsbCdcAcmConfig& cdc_cfg)
 {
     if (ready_) {
         return true;
     }
 
-    hal_ = &GetDefaultHal();
-
-    if (!cdc_.Init(device_, cdc_cfg_)) {
-        LOG_ERR("CDC ACM init failed");
-        return false;
-    }
-
     // 注册数据回调（接收端点完成事件）
-    cdc_.SetDataCallback(OnDataEvent, this);
+    device_.SetDataCallback(OnDataEvent, this);
     // 注册配置状态回调
-    cdc_.SetConfigureCallback(OnConfigureEvent, this);
+    device_.SetConfigureCallback(OnConfigureEvent, this);
 
-    // 初始化 USB 设备核心
-    UsbHal::Config hal_cfg {};
-    hal_cfg.busid        = cfg.busid;
-    hal_cfg.reg_base     = cfg.reg_base;
-    hal_cfg.irq_num      = cfg.irq_num;
-    hal_cfg.irq_priority = cfg.irq_priority;
-
-    if (!device_.Init(*hal_, cdc_, hal_cfg)) {
-        LOG_ERR("UsbDevice init failed");
+    if (!device_.Init(GetDefaultHal(), cfg, cdc_cfg)) {
+        LOG_ERR("UsbDevPort init failed");
         return false;
     }
 
     // 启动 USB
     if (!device_.Start()) {
-        LOG_ERR("UsbDevice start failed");
+        LOG_ERR("UsbDevPort start failed");
         return false;
     }
 
@@ -69,12 +55,14 @@ bool Usb::Init(const Config& cfg)
  */
 void Usb::OnDataEvent(void* ctx, uint8_t ep, const uint8_t* data, uint16_t len)
 {
-    if (ctx != nullptr) {
+    if (ctx != nullptr) 
+    {
         Usb* self = static_cast<Usb*>(ctx);
 
         if (ep == self->GetBulkOutEp()) {
-            self->OnBulkOut(data, len);
-            k_sem_give(&self->sem_);            // 唤醒等待线程
+            if (self->rx_queue_.Push(data, len)) {
+                k_sem_give(&self->sem_);        // 唤醒等待线程
+            }
         } else if (ep == self->GetBulkInEp()) {
             self->OnBulkIn(len);
         }
@@ -90,7 +78,8 @@ void Usb::OnConfigured(bool configured, uint16_t bulk_mps)
     if (configured) {
         atomic_set(&configured_, 1);
         bulk_mps_   = bulk_mps;
-    } else {
+    } 
+    else {
         atomic_set(&configured_, 0);
         bulk_mps_   = 64;
         atomic_set(&tx_busy_, 0);
@@ -107,16 +96,15 @@ void Usb::OnConfigured(bool configured, uint16_t bulk_mps)
  */
 void Usb::OnBulkIn(uint16_t len)
 {
-    if (len != 0 && (len % bulk_mps_) == 0) 
-    {
-        // ZLP 也在临界区内提交，防止 teardown 在中间执行
-        k_spinlock_key_t key = k_spin_lock(&lock_);
-        if (!atomic_get(&configured_)) {
-            atomic_set(&tx_busy_, 0);
-            k_spin_unlock(&lock_, key);
-            return;
-        }
-        if (!hal_->EpStartTx(GetBulkInEp(), nullptr, 0)) {
+    k_spinlock_key_t key = k_spin_lock(&lock_);
+    if (!atomic_get(&configured_)) {
+        atomic_set(&tx_busy_, 0);
+        k_spin_unlock(&lock_, key);
+        return;
+    }
+
+    if (len != 0 && (len % bulk_mps_) == 0) {
+        if (!device_.GetHal().EpStartTx(GetBulkInEp(), nullptr, 0)) {
             atomic_set(&tx_busy_, 0);
         }
         k_spin_unlock(&lock_, key);
@@ -124,6 +112,7 @@ void Usb::OnBulkIn(uint16_t len)
     }
 
     atomic_set(&tx_busy_, 0);
+    k_spin_unlock(&lock_, key);
 }
 
 // Stream 接口
@@ -147,12 +136,16 @@ bool Usb::Send(const uint8_t* data, uint32_t len)
         k_spin_unlock(&lock_, key);
         return false;
     }
+    if (!device_.GetCdcAcm().CanSend()) {
+        k_spin_unlock(&lock_, key);
+        return false;
+    }
     if (atomic_cas(&tx_busy_, 0, 1) == 0) {
         k_spin_unlock(&lock_, key);
         return false;
     }
 
-    bool ok = hal_->EpStartTx(GetBulkInEp(), data, static_cast<uint16_t>(len));
+    bool ok = device_.GetHal().EpStartTx(GetBulkInEp(), data, static_cast<uint16_t>(len));
     if (!ok) {
         atomic_set(&tx_busy_, 0);
     }
