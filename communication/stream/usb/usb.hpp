@@ -14,9 +14,10 @@
 #include <zephyr/kernel.h>
 
 #include "../stream.hpp"
+#include "core/usb_cdc_config.hpp"
 #include "usb_cdc_acm.hpp"
 #include "usb_device.hpp"
-#include "bipbuf.hpp"
+#include "buffer/usb_rx_queue.hpp"
 
 /**
  * @brief USB CDC ACM 顶层封装
@@ -28,39 +29,50 @@ class Usb final : public Stream
 {
 public:
     struct Config {
-        UsbHal*  hal           = nullptr;   // 硬件抽象层
-        uint8_t  busid         = 0;         // USB 总线号
-        uint32_t reg_base      = 0;         // 控制器寄存器基址
-        unsigned int irq_num       = 0;     // 中断号
-        unsigned int irq_priority  = 1;     // PLIC 中断优先级（必须 >0）
+        UsbHal*  hal           = nullptr;               // 硬件抽象层
+        uint8_t  busid         = 0;                     // USB 总线号
+        uint32_t reg_base      = 0;                     // 控制器寄存器基址
+        uint32_t irq_num       = 0;                     // 中断号
+        uint32_t irq_priority  = 1;                     // PLIC 中断优先级（必须 >0）
+        const UsbCdcAcmConfig* cdc_config = nullptr;    // CDC 配置
     };
 
     bool     Init(const Config& cfg);
     bool     IsReady()  const { return ready_; }
     bool     IsTxBusy() const { return tx_busy_; }
 
-    uint16_t Read(uint8_t* buf, uint16_t max_len) override;
+    uint16_t Read(uint8_t* buf, uint16_t max_len) override { return rx_queue_.Pop(buf, max_len); }
     bool     Send(const uint8_t* data, uint32_t len) override;
 
 private:
     static constexpr uint16_t kMaxBufSize = 512;
 
+    UsbDevice  device_ {};                          // USB 设备核心
+    UsbCdcAcm  cdc_    {};                          // CDC ACM 协议
+    const UsbCdcAcmConfig* cdc_cfg_ = nullptr;      // CDC 配置（外部持有）
+    UsbHal*    hal_                 = nullptr;      // 硬件抽象层
+
+    atomic_t   ready_      = ATOMIC_INIT(0);        // Init 完成
+    atomic_t   tx_busy_    = ATOMIC_INIT(0);        // 发送中
+    atomic_t   configured_ = ATOMIC_INIT(0);        // 已配置
+    uint16_t   bulk_mps_   = 64;                    // 批量端点 MPS
+
+    UsbRxQueue rx_queue_ {};                        // 接收队列
+    k_spinlock lock_{};                             // 并发锁
+
+    // 从 CDC 配置查询 bulk 端点地址（替代旧的 kCdcOutEp/kCdcInEp 常量）
+    uint8_t     GetBulkOutEp() const { return cdc_cfg_ ? cdc_cfg_->bulk_out_addr : 0x01; }
+    uint8_t     GetBulkInEp()  const { return cdc_cfg_ ? cdc_cfg_->bulk_in_addr  : 0x81; }
+
     static void OnDataEvent(void* ctx, uint8_t ep, const uint8_t* data, uint16_t len);
-    void OnBulkOut(const uint8_t* data, uint16_t len);
-    void OnBulkIn(uint16_t len);
-
-    static void OnConfigureEvent(void* ctx, bool configured, uint16_t bulk_mps);
-    void OnConfigured(bool configured, uint16_t bulk_mps);
-
-    UsbDevice  device_ {};
-    UsbCdcAcm  cdc_    {};
-    UsbHal*    hal_    = nullptr;
-
-    atomic_t   ready_      = ATOMIC_INIT(0);
-    atomic_t   tx_busy_    = ATOMIC_INIT(0);
-    atomic_t   configured_ = ATOMIC_INIT(0);
-    uint16_t   bulk_mps_   = 64;
-
-    BipBuffer<1024> rx_bip_ {};
-    k_spinlock lock_{};
+    void        OnBulkOut(const uint8_t* data, uint16_t len) { rx_queue_.Push(data, len); }
+    void        OnBulkIn(uint16_t len);
+    void        OnConfigured(bool configured, uint16_t bulk_mps);
+    
+    static void OnConfigureEvent(void* ctx, bool configured, uint16_t bulk_mps)
+    {   
+        if (ctx) {
+            static_cast<Usb*>(ctx)->OnConfigured(configured, bulk_mps); 
+        }
+    }
 };

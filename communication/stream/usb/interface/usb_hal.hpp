@@ -82,6 +82,21 @@ public:
     virtual ~UsbHal() = default;
 
     /**
+     * @brief 硬件能力
+     *
+     * 公共层通过此查询决定是否启用 HS、是否需要对齐缓冲等。
+     * 不报告寄存器细节、QHD/qTD 等平台内部信息。
+     */
+    struct Capabilities {
+        bool     high_speed              = false;
+        bool     dma                     = false;
+        bool     aligned_buffer_required = false;
+        uint16_t ep0_mps                 = 64;
+        uint16_t max_transfer            = 512;
+    };
+    virtual Capabilities GetCapabilities() const = 0;
+
+    /**
      * @brief 初始化 USB 硬件
      * @param cfg       硬件配置
      * @param callback  事件回调

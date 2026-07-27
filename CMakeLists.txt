@@ -36,6 +36,7 @@ if(CONFIG_COM_USB)
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/buffer
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream
     )
 endif()

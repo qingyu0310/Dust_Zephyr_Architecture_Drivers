@@ -15,6 +15,7 @@
 
 #include "usb_device.hpp"
 #include "usb_descriptor.hpp"
+#include "usb_cdc_config.hpp"
 
 /**
  * @brief CDC ACM 协议处理器
@@ -25,36 +26,32 @@
  *   - bulk OUT/IN 完成转发到 OnEndpointComplete
  *
  * 收发缓冲和 Stream 接口在顶层 Usb 中管理，不在此类。
+ * 配置使用 UsbCdcAcmConfig，不再自行维护端点常量。
  */
 class UsbCdcAcm final : public UsbFunction
 {
 public:
-    /**
-     * @brief CDC ACM 配置
-     */
-    struct Config {
-        usb::EndpointConfig int_ep {0x83, usb::EndpointType::Interrupt, 8,  16};
-        usb::EndpointConfig out_ep {0x01, usb::EndpointType::Bulk,      64, 0};
-        usb::EndpointConfig in_ep  {0x81, usb::EndpointType::Bulk,      64, 0};
-        uint8_t  control_interface = 0;         // CDC 控制接口号
-        uint8_t  data_interface    = 1;         // CDC 数据接口号
-        bool     require_dtr       = false;     // 是否等待 DTR 才允许发送
-    };
-
-    bool Init(UsbDevice& device, const Config& cfg);
+    bool Init(UsbDevice& device, const UsbCdcAcmConfig& cfg);
 
     /**
      * @brief 数据事件回调类型
      */
     using DataCallback = void (*)(void* ctx, uint8_t ep, const uint8_t* data, uint16_t len);
     using ConfigureCallback = void (*)(void* ctx, bool configured, uint16_t bulk_mps);
-    void SetDataCallback(DataCallback cb, void* ctx);
-    void SetConfigureCallback(ConfigureCallback cb, void* ctx);
+
+    void SetDataCallback(DataCallback cb, void* ctx)        { data_cb_ = cb; data_ctx_ = ctx; }
+    void SetConfigureCallback(ConfigureCallback cb, void* ctx) { cfg_cb_ = cb; cfg_ctx_ = ctx; }
+
     const uint8_t* GetDescriptor(usb::DescriptorType type, usb::Speed speed, uint8_t index, uint16_t& length) const override;
     bool HandleClassRequest(const usb::SetupPacket& setup, uint8_t* data, uint16_t& length) override;
     bool OnConfigured(bool configured) override;
     void OnEndpointComplete(uint8_t endpoint, const uint8_t* data, uint16_t length, bool error = false) override;
     bool CompleteControlOut(const usb::SetupPacket& setup, const uint8_t* data, uint16_t length) override;
+
+    // 从 CDC 配置查询端点信息（Usb 层使用）
+    uint8_t  GetBulkOutEp()  const { return cfg_ ? cfg_->bulk_out_addr : 0x01; }
+    uint8_t  GetBulkInEp()   const { return cfg_ ? cfg_->bulk_in_addr  : 0x81; }
+    uint16_t GetBulkMps()    const { return bulk_mps_; }
 
 private:
     static constexpr uint16_t kMaxBufSize = 512;
@@ -66,34 +63,36 @@ private:
     bool OnSendBreak(const usb::SetupPacket& setup, uint8_t* data, uint16_t& length);
 
     // 引用
-    UsbDevice*  device_ = nullptr;
+    UsbDevice* device_ = nullptr;
 
     // 描述符集合
     UsbDescriptorSet* desc_set_ = nullptr;
 
-    // 配置
-    Config      cfg_        {};
+    // 配置（指针，外部持有的 UsbCdcAcmConfig）
+    const UsbCdcAcmConfig* cfg_ = nullptr;
+
+    // 端点 MPS（运行时由 OnConfigured 设置）
     uint16_t    bulk_mps_   = 64;
 
     // CDC 状态
     usb::LineCoding line_coding_ {};
-    bool dtr_          = false;
-    bool rts_          = false;
-    uint16_t break_value_ = 0;
+    bool dtr_                   = false;
+    bool rts_                   = false;
+    uint16_t break_value_       = 0;
 
     // 设备状态
-    bool ready_      = false;
-    bool configured_ = false;
+    bool ready_                 = false;
+    bool configured_            = false;
 
     // 数据事件回调（顶层 Usb 注册，用于收发）
-    DataCallback data_cb_  = nullptr;
-    void*        data_ctx_ = nullptr;
+    DataCallback data_cb_       = nullptr;
+    void*        data_ctx_      = nullptr;
 
     // 配置状态回调（顶层 Usb 注册）
-    ConfigureCallback cfg_cb_ = nullptr;
-    void*             cfg_ctx_ = nullptr;
+    ConfigureCallback cfg_cb_   = nullptr;
+    void*             cfg_ctx_  = nullptr;
 
-    // Interrupt IN notification
-    uint8_t  notify_buf_[10] {};
-    bool     notify_busy_ = false;
+    // 中断 IN 通知
+    uint8_t  notify_buf_[10]    {};
+    bool     notify_busy_       = false;
 };

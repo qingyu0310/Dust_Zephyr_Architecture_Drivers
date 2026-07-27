@@ -63,6 +63,11 @@ public:
         const char* manufacturer        = "MCHCK";          // 厂商名
         const char* product             = "USB CDC ACM";    // 产品名
         const char* serial_number       = "qingyu_king";    // 序列号
+        uint8_t control_interface       = 0;                // 控制接口号
+        uint8_t data_interface          = 1;                // 数据接口号
+        uint8_t notification_ep         = 0x83;             // 中断 IN 端点
+        uint8_t bulk_out_addr           = 0x01;             // 批量 OUT 端点    
+        uint8_t bulk_in_addr            = 0x81;             // 批量 IN 端点
     };
 
     /**
@@ -71,11 +76,34 @@ public:
      */
     explicit UsbDescriptorSet(const Config& cfg);
 
-    const uint8_t* GetDeviceDescriptor(uint16_t& length) const;
-    const uint8_t* GetConfigurationDescriptor(usb::Speed speed, uint16_t& length) const;
-    const uint8_t* GetQualifierDescriptor(uint16_t& length) const;
-    const uint8_t* GetOtherSpeedDescriptor(usb::Speed speed, uint16_t& length) const;
-    const uint8_t* GetStringDescriptor(uint8_t index, uint16_t& length) const;
+    const uint8_t* GetDeviceDescriptor(uint16_t& length) const
+    { 
+        length = sizeof(device_desc_); 
+        return device_desc_; 
+    }
+    const uint8_t* GetConfigurationDescriptor(usb::Speed speed, uint16_t& length) const
+    { 
+        length = sizeof(config_fs_); 
+        return (speed == usb::Speed::High) ? config_hs_ : config_fs_; 
+    }
+    const uint8_t* GetQualifierDescriptor(uint16_t& length) const
+    { 
+        length = sizeof(qualifier_); 
+        return qualifier_; 
+    }
+    const uint8_t* GetOtherSpeedDescriptor(usb::Speed speed, uint16_t& length) const
+    { 
+        length = sizeof(other_speed_fs_); 
+        return (speed == usb::Speed::High) ? other_speed_fs_ : other_speed_hs_; 
+    }
+    const uint8_t* GetStringDescriptor(uint8_t index, uint16_t& length) const
+    { 
+        if (index >= string_count_) { 
+            length = 0; return nullptr; 
+        } 
+        length = string_desc_[index][0]; 
+        return string_desc_[index]; 
+    }
 
 private:
     static constexpr uint16_t kMaxStringLen = 32;
@@ -98,12 +126,14 @@ private:
     uint8_t string_desc_[4][kMaxStringLen] {};
     uint8_t string_count_ = 0;
 
+    Config cfg_ {};     // 配置副本
+
     void BuildDevice(uint16_t vid, uint16_t pid, uint16_t bcd_device, uint8_t mfr_idx, uint8_t prod_idx, uint8_t ser_idx);
     void BuildConfig(uint8_t* buf, uint16_t mps);
     void BuildQualifier();
     void BuildOtherSpeed(uint8_t* buf, uint16_t mps);
     void BuildString(uint8_t index, const char* text);
     void BuildStrings(const Config& cfg);
-    
+
     static uint16_t WriteAsciiUtf16le(uint8_t* buf, const char* text);
 };

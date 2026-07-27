@@ -11,23 +11,38 @@
 #pragma once
 
 #include <stdint.h>
-
-#include "../interface/usb_hal.hpp"
+#include "usb_hal.hpp"
 
 /**
  * @brief HPMicro USB 硬件抽象层
+ *
+ * 设计约束：
+ *   - dcd_data/handle/tx_buf 必须位于 .nocache 段（通过文件级静态实现）
+ *   - 端点状态（ep_state_）可以位于普通内存
+ *   - ISR trampoline 使用 instance_ 静态成员，避免文件级全局指针
  */
 class UsbHalHpm final : public UsbHal
 {
 public:
     UsbHalHpm() = default;
 
+    Capabilities GetCapabilities() const override
+    { 
+        Capabilities c{}; 
+        c.high_speed = true; 
+        c.dma = true; 
+        c.ep0_mps = 64; 
+        c.max_transfer = 512; 
+        return c; 
+    }
     bool Init(const Config& cfg, EventCallback callback, void* context) override;
-    bool Connect() override;
-    void Disconnect() override;
-    void Deinit() override;
+
+    bool Connect()      override { return true; }
+    void Disconnect()   override;
+    void Deinit()       override;
     bool SetAddress(uint8_t address) override;
     usb::Speed GetSpeed() const override;
+
     bool EpOpen(const usb::EndpointConfig& cfg) override;
     bool EpClose(uint8_t endpoint) override;
     bool EpStall(uint8_t endpoint, bool stall) override;
@@ -41,6 +56,26 @@ public:
     void Isr();
 
 private:
+    static constexpr int kNumEps = 16;
+
+    // 端点状态（无 .nocache 要求）
+    struct EpState {
+        uint8_t* buf    = nullptr;      // DMA 缓冲指针
+        uint16_t len    = 0;            // 传输长度
+        bool     enable = false;        // 端点使能
+    };
+    
+    EpState in_ep_[kNumEps] {};         // IN 端点状态表
+    EpState out_ep_[kNumEps] {};        // OUT 端点状态表
+
+    Config cfg_ {};                     // 配置副本（用于回滚）
+
+    EventCallback callback_ = nullptr;  // 事件回调
+    void*         context_  = nullptr;  // 回调上下文
+    uint32_t      reg_base_ = 0;        // 控制器寄存器基址
+
+    bool ready_ = false;                // Init 完成
+
     void InitClockAndPhy();
     void ResetController();
     void SetDeviceMode();
@@ -48,14 +83,6 @@ private:
     void HandleSetupReceived();
     void HandleTransferComplete(uint32_t edpt_complete);
     uint32_t CalcTransferLength(uint8_t ep_idx, bool* error = nullptr);
+    void Rollback();                    // Init 失败后回滚
 
-    uint8_t  rx_buf_[2][512] {};
-    uint8_t  rx_idx_ = 0;
-    uint8_t  setup_buf_[8] {};
-
-    EventCallback callback_ = nullptr;
-    void*         context_  = nullptr;
-    uint32_t      reg_base_ = 0;
-
-    bool ready_ = false;
 };
