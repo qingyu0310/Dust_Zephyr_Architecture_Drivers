@@ -68,10 +68,15 @@ config COM_RS485
 
 config COM_USB
     default n
-    bool "CherryUSB CDC ACM driver"
-    select CHERRYUSB
-    select CHERRYUSB_DEVICE
-    select CHERRYUSB_DEVICE_CDC_ACM
+    bool "USB CDC ACM driver"
+    select BUF_BIPBUF
     help
-        Enable the CherryUSB CDC ACM wrapper in drivers/communication/usb.
+        Enable the C++ USB device CDC ACM stream.
+
+config COM_USB_HAL_HPM
+    default n
+    bool "HPMicro USB device HAL"
+    depends on COM_USB
+    help
+        Enable HPMicro EHCI USB device HAL for C++ USB stack.
 
