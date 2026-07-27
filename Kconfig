@@ -70,13 +70,7 @@ config COM_USB
     default n
     bool "USB CDC ACM driver"
     select BUF_BIPBUF
+    select USB
     help
         Enable the C++ USB device CDC ACM stream.
-
-config COM_USB_HAL_HPM
-    default n
-    bool "HPMicro USB device HAL"
-    depends on COM_USB
-    help
-        Enable HPMicro EHCI USB device HAL for C++ USB stack.
 

@@ -24,11 +24,9 @@ bool Usb::Init(const Config& cfg)
         return true;
     }
 
-    if (cfg.hal == nullptr) {
-        return false;
-    }
-
-    hal_ = cfg.hal;
+    // 由 CONFIG_COM_USB_HAL_* 决定平台 HAL 实现
+    // CONFIG_COM_USB_HAL_HPM → hal/usb_hal_hpm.cpp 提供 GetDefaultHal()
+    hal_ = &GetDefaultHal();
     cdc_cfg_ = cfg.cdc_config;
 
     // 初始化 CDC ACM（使用外部传入的统一配置）
@@ -81,6 +79,7 @@ void Usb::OnDataEvent(void* ctx, uint8_t ep, const uint8_t* data, uint16_t len)
 
         if (ep == self->GetBulkOutEp()) {
             self->OnBulkOut(data, len);
+            k_sem_give(&self->sem_);            // 唤醒等待线程
         } else if (ep == self->GetBulkInEp()) {
             self->OnBulkIn(len);
         }

@@ -28,29 +28,10 @@ endif()
 if(CONFIG_COM_USB)
     target_sources(app PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/usb.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_descriptor.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_device.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_cdc_acm.cpp
     )
     target_include_directories(app PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/buffer
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream
-    )
-endif()
-
-if(CONFIG_COM_USB_HAL_HPM)
-    target_sources(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/hal/usb_hal_hpm.cpp
-        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/components/usb/device/hpm_usb_device.c
-    )
-    target_include_directories(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/hal
-    )
-    zephyr_include_directories(
-        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/components/usb/device
     )
 endif()
 

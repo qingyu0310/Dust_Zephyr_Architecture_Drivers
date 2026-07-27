@@ -13,11 +13,13 @@
 #include <stdint.h>
 #include <zephyr/kernel.h>
 
-#include "../stream.hpp"
-#include "core/usb_cdc_config.hpp"
+#include "stream.hpp"
+
+// USB 协议栈（用户自维护库，D:/Zephyr/modules/user/usb 已加入 include 路径）
+#include "usb_cdc_config.hpp"
 #include "usb_cdc_acm.hpp"
 #include "usb_device.hpp"
-#include "buffer/usb_rx_queue.hpp"
+#include "usb_rx_queue.hpp"
 
 /**
  * @brief USB CDC ACM 顶层封装
@@ -29,7 +31,6 @@ class Usb final : public Stream
 {
 public:
     struct Config {
-        UsbHal*  hal           = nullptr;               // 硬件抽象层
         uint8_t  busid         = 0;                     // USB 总线号
         uint32_t reg_base      = 0;                     // 控制器寄存器基址
         uint32_t irq_num       = 0;                     // 中断号
@@ -68,7 +69,7 @@ private:
     void        OnBulkOut(const uint8_t* data, uint16_t len) { rx_queue_.Push(data, len); }
     void        OnBulkIn(uint16_t len);
     void        OnConfigured(bool configured, uint16_t bulk_mps);
-    
+
     static void OnConfigureEvent(void* ctx, bool configured, uint16_t bulk_mps)
     {   
         if (ctx) {
