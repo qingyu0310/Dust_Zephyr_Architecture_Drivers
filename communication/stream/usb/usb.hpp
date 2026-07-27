@@ -27,6 +27,8 @@
  * 继承 Stream，对外提供统一的 Read/Send 接口。
  * DMA 缓冲由 UsbHal 管理，本层只维护软件接收队列。
  */
+namespace usb {
+
 class Usb final : public Stream
 {
 public:
@@ -35,7 +37,6 @@ public:
         uint32_t reg_base      = 0;                     // 控制器寄存器基址
         uint32_t irq_num       = 0;                     // 中断号
         uint32_t irq_priority  = 1;                     // PLIC 中断优先级（必须 >0）
-        const UsbCdcAcmConfig* cdc_config = nullptr;    // CDC 配置
     };
 
     bool     Init(const Config& cfg);
@@ -48,22 +49,22 @@ public:
 private:
     static constexpr uint16_t kMaxBufSize = 512;
 
-    UsbDevice  device_ {};                          // USB 设备核心
-    UsbCdcAcm  cdc_    {};                          // CDC ACM 协议
-    const UsbCdcAcmConfig* cdc_cfg_ = nullptr;      // CDC 配置（外部持有）
-    UsbHal*    hal_                 = nullptr;      // 硬件抽象层
+    UsbCdcAcm  cdc_    {};                                  // CDC ACM 协议
+    UsbCdcAcmConfig cdc_cfg_ {};                            // CDC 配置
+    UsbDevice  device_ {};                                  // USB 设备核心
+    UsbHal*    hal_     = nullptr;                          // 硬件抽象层
 
-    atomic_t   ready_      = ATOMIC_INIT(0);        // Init 完成
-    atomic_t   tx_busy_    = ATOMIC_INIT(0);        // 发送中
-    atomic_t   configured_ = ATOMIC_INIT(0);        // 已配置
-    uint16_t   bulk_mps_   = 64;                    // 批量端点 MPS
+    atomic_t   ready_      = ATOMIC_INIT(0);                // Init 完成
+    atomic_t   tx_busy_    = ATOMIC_INIT(0);                // 发送中
+    atomic_t   configured_ = ATOMIC_INIT(0);                // 已配置
+    uint16_t   bulk_mps_   = 64;                            // 批量端点 MPS
 
-    UsbRxQueue rx_queue_ {};                        // 接收队列
-    k_spinlock lock_{};                             // 并发锁
+    UsbRxQueue rx_queue_ {};                                // 接收队列
+    k_spinlock lock_{};                                     // 并发锁
 
-    // 从 CDC 配置查询 bulk 端点地址（替代旧的 kCdcOutEp/kCdcInEp 常量）
-    uint8_t     GetBulkOutEp() const { return cdc_cfg_ ? cdc_cfg_->bulk_out_addr : 0x01; }
-    uint8_t     GetBulkInEp()  const { return cdc_cfg_ ? cdc_cfg_->bulk_in_addr  : 0x81; }
+    // 从 CDC 配置查询 bulk 端点地址
+    uint8_t     GetBulkOutEp() const { return cdc_cfg_.bulk_out_addr; }
+    uint8_t     GetBulkInEp()  const { return cdc_cfg_.bulk_in_addr; }
 
     static void OnDataEvent(void* ctx, uint8_t ep, const uint8_t* data, uint16_t len);
     void        OnBulkOut(const uint8_t* data, uint16_t len) { rx_queue_.Push(data, len); }
@@ -77,3 +78,5 @@ private:
         }
     }
 };
+
+} // namespace usb

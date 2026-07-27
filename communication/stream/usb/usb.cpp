@@ -6,12 +6,15 @@
  * @date 2026-07-27
  *
  * @copyright Copyright (c) 2026
+ *
  */
 
 #include "usb.hpp"
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_REGISTER(usb, LOG_LEVEL_INF);
+
+namespace usb {
 
 /**
  * @brief 初始化
@@ -24,17 +27,9 @@ bool Usb::Init(const Config& cfg)
         return true;
     }
 
-    // 由 CONFIG_COM_USB_HAL_* 决定平台 HAL 实现
-    // CONFIG_COM_USB_HAL_HPM → hal/usb_hal_hpm.cpp 提供 GetDefaultHal()
     hal_ = &GetDefaultHal();
-    cdc_cfg_ = cfg.cdc_config;
 
-    // 初始化 CDC ACM（使用外部传入的统一配置）
-    if (cfg.cdc_config == nullptr) {
-        LOG_ERR("CDC config required");
-        return false;
-    }
-    if (!cdc_.Init(device_, *cfg.cdc_config)) {
+    if (!cdc_.Init(device_, cdc_cfg_)) {
         LOG_ERR("CDC ACM init failed");
         return false;
     }
@@ -164,3 +159,5 @@ bool Usb::Send(const uint8_t* data, uint32_t len)
     k_spin_unlock(&lock_, key);
     return ok;
 }
+
+} // namespace usb
