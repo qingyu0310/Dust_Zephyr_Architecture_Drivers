@@ -56,8 +56,8 @@ bool Pwm::SetPulse(uint32_t pulse)
  */
 bool Pwm::SetDuty(float duty)
 {
-    if (duty < 0.01f) {
-        duty = 0.01f;
+    if (duty < 0.0f) {
+        duty = 0.0f;
     }
     if (duty > 1.0f) {
         duty = 1.0f;
