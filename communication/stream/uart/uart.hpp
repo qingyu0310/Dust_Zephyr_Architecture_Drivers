@@ -66,7 +66,7 @@ public:
     struct Config 
     {
         uart_config line_cfg {
-            115200,
+            921600,
             UART_CFG_PARITY_NONE,
             UART_CFG_STOP_BITS_1,
             UART_CFG_DATA_BITS_8,

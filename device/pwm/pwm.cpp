@@ -56,8 +56,8 @@ bool Pwm::SetPulse(uint32_t pulse)
  */
 bool Pwm::SetDuty(float duty)
 {
-    if (duty < 0.0f) {
-        duty = 0.0f;
+    if (duty < 0.01f) {
+        duty = 0.01f;
     }
     if (duty > 1.0f) {
         duty = 1.0f;
@@ -84,7 +84,12 @@ bool Pwm::SetPeriodAndPulse(uint32_t period, uint32_t pulse)
     return true;
 }
 
-/** @brief 停止输出（脉宽归零） */
+/**
+ * @brief 停止输出
+ * 
+ * @return true 
+ * @return false 
+ */
 bool Pwm::Stop()
 {
     return SetPulse(0);

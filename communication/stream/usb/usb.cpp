@@ -48,8 +48,6 @@ bool Usb::Init(const UsbHal::Config& cfg, const UsbCdcAcmConfig& cdc_cfg)
     return true;
 }
 
-// 数据事件回调
-
 /**
  * @brief 从 UsbCdcAcm 转发的静态回调
  */

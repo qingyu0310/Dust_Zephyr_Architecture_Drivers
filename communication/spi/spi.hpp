@@ -82,6 +82,7 @@ public:
     bool Transceive(const uint8_t* tx_data, uint8_t* rx_data, uint32_t len);
     bool Send(const uint8_t* data, uint32_t len);
     bool Read(uint8_t* data, uint32_t len);
+    bool WriteThenRead(const uint8_t* tx_data, uint32_t tx_len, uint8_t* rx_data, uint32_t rx_len);
 
 private:
     bool PrepareTx(const uint8_t* data, uint32_t len);
