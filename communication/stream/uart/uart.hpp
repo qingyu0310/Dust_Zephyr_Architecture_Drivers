@@ -19,7 +19,7 @@
  * ### Kconfig
  * ```kconfig
  * config TRD_REMOTE
- *     select COM_UART_DMA
+ *     select DUST_COM_UART_DMA
  * ```
  *
  * ### 初始化

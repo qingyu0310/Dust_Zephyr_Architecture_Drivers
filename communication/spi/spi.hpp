@@ -30,8 +30,8 @@
  *
  * ### Kconfig
  * ```kconfig
- * config MOD_DEV_IMU_BMI088
- *     select COM_SPI
+ * config DUST_MOD_DEV_IMU_BMI088
+ *     select DUST_COM_SPI
  * ```
  *
  * ### 初始化

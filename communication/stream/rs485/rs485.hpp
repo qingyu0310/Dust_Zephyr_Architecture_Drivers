@@ -25,7 +25,7 @@
  * ### Kconfig
  * ```kconfig
  * config TRD_RS485
- *     select COM_RS485
+ *     select DUST_COM_RS485
  * ```
  *
  * ### 初始化

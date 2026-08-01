@@ -2,47 +2,47 @@
 # 提供 GPIO/PWM/UART/CAN 等外设驱动，以及 printk/shell 调试通道
 # 每个 config 直接 select 对应的 Zephyr 子系统驱动符号
 
-config DEV_GPIO_OUTPUT
+config DUST_DEV_GPIO_OUTPUT
     default n
     bool "Enable GPIO output wrapper"
     select GPIO
     help
         Enable the GPIO output wrappers in drivers/device/gpio.
 
-config DEV_GPIO_INPUT
+config DUST_DEV_GPIO_INPUT
     default n
     bool "Enable GPIO input wrapper"
     select GPIO
     help
         Enable the GPIO input wrappers in drivers/device/gpio.
 
-config DEV_PWM
+config DUST_DEV_PWM
     default n
     bool "Enable simple PWM device wrapper"
     select PWM
     help
         Enable the lightweight PWM wrapper in drivers/device/pwm.
 
-config COM_UART
+config DUST_COM_UART
     default n
     bool "UART interrupt driver"
     select SERIAL
     select UART_INTERRUPT_DRIVEN
     select UART_ASYNC_API
-    select BUF_BIPBUF
+    select DUST_BUF_BIPBUF
     help
         Enable the UART interrupt driver with ping-pong receive buffering.
 
-config COM_UART_DMA
+config DUST_COM_UART_DMA
     default n
     bool "UART DMA driver"
     select SERIAL
     select UART_ASYNC_API
-    select BUF_BIPBUF
+    select DUST_BUF_BIPBUF
     help
         Enable the asynchronous DMA UART driver.
 
-config COM_SPI
+config DUST_COM_SPI
     default n
     bool "SPI driver"
     select SPI
@@ -50,14 +50,14 @@ config COM_SPI
     help
         Enable the lightweight SPI wrapper in drivers/communication/spi.
 
-config COM_CAN
+config DUST_COM_CAN
     default n
     bool "CAN driver"
     select CAN
     help
         Enable the CAN driver. Board DTS must provide the CAN controller node.
 
-config COM_RS485
+config DUST_COM_RS485
     default n
     bool "RS485 half-duplex driver"
     select SERIAL
@@ -66,11 +66,11 @@ config COM_RS485
     help
         Enable the RS485 half-duplex driver using UART_ASYNC_API and a DE/RE GPIO.
 
-config COM_USB
+config DUST_COM_USB
     default n
     bool "USB CDC ACM driver"
-    select BUF_BIPBUF
-    select USB
+    select DUST_BUF_BIPBUF
+    select DUST_USB_DEVICE_STACK
     help
         Enable the C++ USB device CDC ACM stream.
 

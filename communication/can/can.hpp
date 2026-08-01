@@ -23,7 +23,7 @@
  * ### Kconfig
  * ```kconfig
  * config TRD_CAN_TX
- *     select COM_CAN
+ *     select DUST_COM_CAN
  * ```
  *
  * ### 初始化

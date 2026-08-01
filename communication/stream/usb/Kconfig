@@ -1,0 +1,15 @@
+# USB 设备栈：中间层（栈内核） + 各芯片 HAL（参考 CherryUSB 分层）
+config DUST_USB_DEVICE_STACK
+    bool
+    select DUST_USB_DEVICE_CDC_ACM
+    # 各芯片 HAL 用 DTS 条件 select
+    select DUST_USB_DEVICE_HAL_HPM if DT_HAS_HPMICRO_HPM_QINGYUUSB_ENABLED
+    # select DUST_USB_DEVICE_HAL_STM32 if DT_HAS_ST_STM32_..._ENABLED   # 预留多芯片
+
+config DUST_USB_DEVICE_HAL_HPM
+    bool
+    default n
+
+config DUST_USB_DEVICE_CDC_ACM
+    bool
+    default n
