@@ -7,7 +7,7 @@ config DUST_USB_DEVICE_STACK
     # select DUST_USB_DEVICE_HAL_STM32 if DT_HAS_ST_STM32_..._ENABLED   # 预留多芯片
 
 config DUST_USB_DEVICE_HAL_HPM
-    bool
+    bool "HPMicro EHCI USB HAL"
     default n
 
 config DUST_USB_DEVICE_CDC_ACM
