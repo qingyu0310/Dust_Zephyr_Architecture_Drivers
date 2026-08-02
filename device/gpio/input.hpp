@@ -11,7 +11,6 @@
 
 #pragma once
 
-#include "zephyr/device.h"
 #include <zephyr/drivers/gpio.h>
 
 class Input final
