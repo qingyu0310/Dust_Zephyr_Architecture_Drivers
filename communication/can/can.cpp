@@ -43,6 +43,8 @@ bool Can::Init(const struct device *dev, const struct can_filter &filter, can_mo
         return false;
     }
 
+    can_set_state_change_callback(dev_, state_callback, nullptr);
+
     LOG_INF("can ready %s filter=%d", dev->name, filter_id_);
     return true;
 }
@@ -97,4 +99,13 @@ void Can::rx_callback(const struct device *dev, struct can_frame *frame, void *u
     if (self->rx_cb_ != nullptr) {
         self->rx_cb_(*frame, self->rx_cb_data_);
     }
+}
+
+/**
+ * @brief CAN 状态变化回调 — 打印 error passive / bus-off 等状态
+ */
+void Can::state_callback(const struct device *dev, enum can_state state, can_bus_err_cnt err_cnt, void *user_data)
+{
+    (void)user_data;
+    LOG_ERR("can %s state=%d tx_err=%u rx_err=%u", dev->name, state, err_cnt.tx_err_cnt, err_cnt.rx_err_cnt);
 }

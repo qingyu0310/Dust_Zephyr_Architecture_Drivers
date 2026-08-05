@@ -78,9 +78,10 @@ public:
     bool     Init(const struct device* dev, const Config& cfg);
     void     SetBaudrate(uint32_t baud);
     void     SetLineConfig(const uart_config& cfg);
+    bool     Reconfigure(const uart_config& cfg);   // 原子协议切换：Stop→改线参数→Start，期间不自动重启
 
     bool     StartRx();
-    void     StopRx();
+    bool     StopRx();
 
     uint16_t Read(uint8_t* buf, uint16_t max_len)    override;
     bool     Send(const uint8_t* data, uint32_t len) override;
@@ -102,6 +103,7 @@ private:
 
     Config      config_ {};
     atomic_t    ready_ = ATOMIC_INIT(0);            // 初始化完成标志
+    atomic_t    restart_on_disabled_ = ATOMIC_INIT(1);  // on_rx_disabled 是否自动重启 RX（协议切换期间临时置 0）
     k_spinlock  lock_;
     
     bool ApplyLineConfig();
@@ -113,6 +115,7 @@ private:
         buf_free_[1] = true;
         atomic_set(&tx_busy_, 0);
         atomic_set(&ready_, 0);
+        atomic_set(&restart_on_disabled_, 1);
     }
 };
 

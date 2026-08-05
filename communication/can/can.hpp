@@ -64,6 +64,7 @@
 #pragma once
 
 #include "zephyr/device.h"
+#include <cstdint>
 #include <zephyr/drivers/can.h>
 
 /**
@@ -86,28 +87,29 @@ enum CanIndex : uint8_t
 class Can final
 {
 public:
-    using TxCallback = void (*)(const struct device *dev, int error, void *user_data);
-    using RxCallback = void (*)(struct can_frame &frame, void *user_data);
+    using TxCallback = void (*)(const device *dev, uint8_t error, void *user_data);
+    using RxCallback = void (*)(can_frame &frame, void *user_data);
 
 
-    bool Init(const struct device *dev, const struct can_filter &filter,
-              can_mode_t ctrl_mode = CAN_MODE_NORMAL);
+    bool Init(const device *dev, const can_filter &filter, can_mode_t ctrl_mode = CAN_MODE_NORMAL);
     void SetTxCallback(TxCallback cb, void *user_data = nullptr);
     void SetRxCallback(RxCallback cb, void *user_data = nullptr);
-    bool Send(const struct can_frame *frame);
+    bool Send(const can_frame *frame);
 
-    const struct device *Device() const { return dev_; }
+    const device *Device() const { return dev_; }
 
 private:
     // Zephyr CAN TX 完成回调（静态函数，转进对象）
-    static void tx_callback(const struct device *dev, int error, void *user_data);
+    static void tx_callback(const device *dev, int error, void *user_data);
 
     // Zephyr CAN RX 回调（静态函数，转进对象）
-    static void rx_callback(const struct device *dev, struct can_frame *frame,
-                            void *user_data);
+    static void rx_callback(const device *dev, can_frame *frame, void *user_data);
 
-    const struct device *dev_{};        // CAN 设备
-    int filter_id_ = -1;                // 接收过滤器 ID
+    // CAN 状态变化回调（error passive / bus-off 诊断）
+    static void state_callback(const device *dev, enum can_state state, can_bus_err_cnt err_cnt, void *user_data);
+
+    const device *dev_{};        		// CAN 设备
+    uint32_t filter_id_ = -1;           // 接收过滤器 ID
 
     TxCallback tx_cb_      = nullptr;   // 外部 TX 回调
     void*      tx_cb_data_ = nullptr;   // TX 回调用户数据

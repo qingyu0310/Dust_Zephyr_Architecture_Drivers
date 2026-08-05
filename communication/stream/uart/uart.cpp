@@ -65,9 +65,17 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
         self->cur_buf_ = 0;
         self->buf_free_[0] = true;
         self->buf_free_[1] = true;
-        int32_t timeout = self->config_.base_cfg.rx_timeout;
-        int ret = uart_rx_enable(dev, self->dma_buf_[0], UartDma::kMaxBufSize, timeout);
-        if (ret < 0) { atomic_set(&self->ready_, 0); }
+        if (atomic_get(&self->restart_on_disabled_)) {
+            int32_t timeout = self->config_.base_cfg.rx_timeout;
+            int ret = uart_rx_enable(dev, self->dma_buf_[0], UartDma::kMaxBufSize, timeout);
+            if (ret < 0) {
+                atomic_set(&self->ready_, 0);
+            } else {
+                atomic_set(&self->ready_, 1);
+            }
+        } else {
+            atomic_set(&self->ready_, 0);
+        }
     };
 
     auto on_tx_done = [self]()
@@ -215,15 +223,56 @@ bool UartDma::StartRx()
 
 /**
  * @brief 停止 DMA 接收
+ * @return true 停止成功（DMA 已停、ready_ 清 0）
  */
-void UartDma::StopRx()
+bool UartDma::StopRx()
 {
     k_spinlock_key_t key = k_spin_lock(&lock_);
 
-    if (uart_rx_disable(dev_) == 0) {
+    bool stopped = (uart_rx_disable(dev_) == 0);
+    if (stopped) {
         atomic_set(&ready_, 0);
     }
     k_spin_unlock(&lock_, key);
+    return stopped;
+}
+
+/**
+ * @brief 原子协议切换 — 停止接收 → 改线参数 → 重启接收
+ *
+ * 切换期间置 restart_on_disabled_ = 0，使 on_rx_disabled 不会自动重启 RX，
+ * 避免与显式 Stop/Start 冲突（重复 enable、FIFO 反复清空、运行中改波特率）。
+ * 任何失败路径都会恢复 restart_on_disabled_，保住异常自动恢复通道。
+ *
+ * @param cfg 新的线参数（波特率/校验/停止位等）
+ * @return true 配置并重启成功
+ */
+bool UartDma::Reconfigure(const uart_config& cfg)
+{
+    atomic_set(&restart_on_disabled_, 0);
+
+    bool stopped = StopRx();
+    if (!stopped) {
+        atomic_set(&restart_on_disabled_, 1);
+        LOG_ERR("Reconfigure: rx_disable failed");
+        return false;
+    }
+
+    rx_bip_.Reset();                                // 丢弃旧配置残留数据，防污染新协议探测
+
+    config_.line_cfg = cfg;
+    bool cfg_ok = ApplyLineConfig();
+    if (!cfg_ok) {
+        LOG_ERR("Reconfigure: uart_configure failed");
+    }
+
+    atomic_set(&restart_on_disabled_, 1);
+
+    bool rx_ok = StartRx();
+    if (!rx_ok) {
+        LOG_ERR("Reconfigure: StartRx failed");
+    }
+    return cfg_ok && rx_ok;
 }
 
 /**
