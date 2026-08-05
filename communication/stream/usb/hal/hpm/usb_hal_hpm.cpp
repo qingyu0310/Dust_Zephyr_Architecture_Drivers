@@ -12,7 +12,7 @@
 
 #include <string.h>
 
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
 #include <hpm_soc.h>
 #include <hpm_clock_drv.h>
@@ -22,7 +22,6 @@
 #include <hpm_common.h>
 #include <dt-bindings/clock/hpm5361-clocks.h>
 
-LOG_MODULE_REGISTER(usb_hal_hpm, LOG_LEVEL_INF);
 
 static constexpr uint32_t kIntrUsb        = USB_USBINTR_UE_MASK;
 static constexpr uint32_t kIntrError      = USB_USBINTR_UEE_MASK;
@@ -80,7 +79,7 @@ bool UsbHalHpm::Init(const Config& cfg, EventCallback callback, void* context)
     InitClockAndPhy();
 
     if (irq_connect_dynamic(cfg.irq_num, cfg.irq_priority, usb_isr_entry, this, 0) < 0) {
-        LOG_ERR("IRQ connect failed (irq=%u)", cfg.irq_num);
+        DUST_LOG_ERR("IRQ connect failed (irq=%u)", cfg.irq_num);
         return false;
     }
 
@@ -91,14 +90,14 @@ bool UsbHalHpm::Init(const Config& cfg, EventCallback callback, void* context)
 
     uint32_t mask = kIntrUsb | kIntrError | kIntrPortChange | kIntrReset;
     if (!usb_device_init(&s_handle, mask)) {
-        LOG_ERR("usb_device_init failed");
+        DUST_LOG_ERR("usb_device_init failed");
         Rollback();
         return false;
     }
 
     ready_ = true;
     irq_enable(cfg.irq_num);
-    LOG_INF("HPM USB init done");
+    DUST_LOG_INF("HPM USB init done");
     return true;
 }
 
@@ -109,7 +108,7 @@ bool UsbHalHpm::Init(const Config& cfg, EventCallback callback, void* context)
  */
 void UsbHalHpm::Rollback()
 {
-    LOG_ERR("Rolling back USB HAL init");
+    DUST_LOG_ERR("Rolling back USB HAL init");
     ready_ = false;
     if (cfg_.irq_num) {
         irq_disable(cfg_.irq_num);
@@ -133,7 +132,7 @@ void UsbHalHpm::InitClockAndPhy()
     usb_phy_deinit(regs);
     usb_phy_init(regs, false);
     k_sleep(K_MSEC(100));
-    LOG_INF("PHY init done");
+    DUST_LOG_INF("PHY init done");
 }
 
 //  —————————————————————————— ISR ——————————————————————————
@@ -151,16 +150,16 @@ void UsbHalHpm::Isr()
 
 
     if (sts & kIntrError) {
-        LOG_ERR("USB error 0x%08x", sts);
+        DUST_LOG_ERR("USB error 0x%08x", sts);
     }
 
     if (sts & kIntrReset) {
-        LOG_INF("ISR: USB RESET");
+        DUST_LOG_INF("ISR: USB RESET");
         HandleReset();
     }
 
     if (sts & kIntrPortChange) {
-        LOG_INF("ISR: PortChange CCS=%d", !!(regs->PORTSC1 & USB_PORTSC1_CCS_MASK));
+        DUST_LOG_INF("ISR: PortChange CCS=%d", !!(regs->PORTSC1 & USB_PORTSC1_CCS_MASK));
         Event ev {};
         if (regs->PORTSC1 & USB_PORTSC1_CCS_MASK) {
             ev.type  = EventType::Connected;
@@ -205,12 +204,12 @@ void UsbHalHpm::HandleReset()
 
     ep0_cfg.ep_addr = 0x00;
     bool ok = usb_device_edpt_open(&s_handle, &ep0_cfg);
-    LOG_INF("HandleReset: EP0 OUT open=%d", ok);
+    DUST_LOG_INF("HandleReset: EP0 OUT open=%d", ok);
     out_ep_[0].enable = ok;
 
     ep0_cfg.ep_addr = 0x80;
     ok = usb_device_edpt_open(&s_handle, &ep0_cfg);
-    LOG_INF("HandleReset: EP0 IN open=%d ENDPTCTRL0=0x%08x", ok, s_handle.regs->ENDPTCTRL[0]);
+    DUST_LOG_INF("HandleReset: EP0 IN open=%d ENDPTCTRL0=0x%08x", ok, s_handle.regs->ENDPTCTRL[0]);
     in_ep_[0].enable = ok;
 
     Event ev {};
@@ -294,7 +293,7 @@ uint32_t UsbHalHpm::CalcTransferLength(uint8_t idx, bool* error)
     {
         if (qtd->halted || qtd->xact_err || qtd->buffer_err) 
         {
-            LOG_ERR("qTD error: halted=%d xact_err=%d buf_err=%d", qtd->halted, qtd->xact_err, qtd->buffer_err);
+            DUST_LOG_ERR("qTD error: halted=%d xact_err=%d buf_err=%d", qtd->halted, qtd->xact_err, qtd->buffer_err);
             qtd->in_use = false;
             while (qtd->next != USB_SOC_DCD_QTD_NEXT_INVALID) 
             {
@@ -327,13 +326,13 @@ bool UsbHalHpm::Ep0StartIn(const uint8_t* data, uint16_t len)
 {
     if (!ready_ || !in_ep_[0].enable) 
     {
-        LOG_ERR("Ep0StartIn rejected: ready=%d enable=%d len=%u",
+        DUST_LOG_ERR("Ep0StartIn rejected: ready=%d enable=%d len=%u",
                 ready_, in_ep_[0].enable, len);
         return false;
     }
 
     if (len > sizeof(s_tx_buf)) {
-        LOG_ERR("Ep0StartIn too large");
+        DUST_LOG_ERR("Ep0StartIn too large");
         return false;
     }
 
@@ -347,7 +346,7 @@ bool UsbHalHpm::Ep0StartIn(const uint8_t* data, uint16_t len)
         ok = usb_device_edpt_xfer(&s_handle, 0x80, nullptr, 0);
     }
 
-    if (!ok) LOG_ERR("Ep0StartIn(len=%u) failed", len);
+    if (!ok) DUST_LOG_ERR("Ep0StartIn(len=%u) failed", len);
     return ok;
 }
 
@@ -361,7 +360,7 @@ bool UsbHalHpm::Ep0StartOut(uint8_t* data, uint16_t len)
 {
     if (!ready_ || !out_ep_[0].enable)
     {
-        LOG_ERR("Ep0StartOut rejected: ready=%d enable=%d", ready_, out_ep_[0].enable);
+        DUST_LOG_ERR("Ep0StartOut rejected: ready=%d enable=%d", ready_, out_ep_[0].enable);
         return false;
     }
     out_ep_[0].buf = data;
@@ -372,7 +371,7 @@ bool UsbHalHpm::Ep0StartOut(uint8_t* data, uint16_t len)
     }
 
     bool ok = usb_device_edpt_xfer(&s_handle, 0x00, data, len);
-    if (!ok) LOG_ERR("Ep0StartOut(len=%u) failed", len);
+    if (!ok) DUST_LOG_ERR("Ep0StartOut(len=%u) failed", len);
     return ok;
 }
 
@@ -384,11 +383,11 @@ bool UsbHalHpm::Ep0StatusIn()
 {
     if (!ready_ || !in_ep_[0].enable)
     {
-        LOG_ERR("Ep0StatusIn rejected: ready=%d enable=%d", ready_, in_ep_[0].enable);
+        DUST_LOG_ERR("Ep0StatusIn rejected: ready=%d enable=%d", ready_, in_ep_[0].enable);
         return false;
     }
     bool ok = usb_device_edpt_xfer(&s_handle, 0x80, nullptr, 0);
-    if (!ok) LOG_ERR("Ep0StatusIn failed");
+    if (!ok) DUST_LOG_ERR("Ep0StatusIn failed");
     return ok;
 }
 
@@ -400,11 +399,11 @@ bool UsbHalHpm::Ep0StatusOut()
 {
     if (!ready_ || !out_ep_[0].enable)
     {
-        LOG_ERR("Ep0StatusOut rejected: ready=%d enable=%d", ready_, out_ep_[0].enable);
+        DUST_LOG_ERR("Ep0StatusOut rejected: ready=%d enable=%d", ready_, out_ep_[0].enable);
         return false;
     }
     bool ok = usb_device_edpt_xfer(&s_handle, 0x00, nullptr, 0);
-    if (!ok) LOG_ERR("Ep0StatusOut failed");
+    if (!ok) DUST_LOG_ERR("Ep0StatusOut failed");
     return ok;
 }
 
@@ -514,7 +513,7 @@ bool UsbHalHpm::EpClose(uint8_t ep)
         if (!(s_handle.regs->ENDPTFLUSH & flush_bit)) break;
     }
     if (s_handle.regs->ENDPTFLUSH & flush_bit) {
-        LOG_ERR("EpClose ep 0x%02x flush timeout", ep);
+        DUST_LOG_ERR("EpClose ep 0x%02x flush timeout", ep);
     }
 
     dcd_qhd_t* qhd = usb_device_qhd_get(&s_handle, ep_idx);

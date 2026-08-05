@@ -10,9 +10,8 @@
  */
 
 #include "usb.hpp"
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
-LOG_MODULE_REGISTER(usb, LOG_LEVEL_INF);
 
 namespace usb {
 
@@ -33,17 +32,17 @@ bool Usb::Init(const UsbHal::Config& cfg, const UsbCdcAcmConfig& cdc_cfg)
     device_.SetConfigureCallback(OnConfigureEvent, this);
 
     if (!device_.Init(GetDefaultHal(), cfg, cdc_cfg)) {
-        LOG_ERR("UsbDevPort init failed");
+        DUST_LOG_ERR("UsbDevPort init failed");
         return false;
     }
 
     // 启动 USB
     if (!device_.Start()) {
-        LOG_ERR("UsbDevPort start failed");
+        DUST_LOG_ERR("UsbDevPort start failed");
         return false;
     }
 
-    LOG_INF("USB initialized");
+    DUST_LOG_INF("USB initialized");
     ready_ = true;
     return true;
 }

@@ -7,11 +7,10 @@
  */
 
 #include "spi.hpp"
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
 #pragma message "Compiling Drivers/Communication SPI"
 
-LOG_MODULE_REGISTER(spi, LOG_LEVEL_INF);
 
 /**
  * @brief 通过设备树初始化 SPI
@@ -20,7 +19,7 @@ LOG_MODULE_REGISTER(spi, LOG_LEVEL_INF);
 bool Spi::Init(const struct spi_dt_spec& spec)
 {
     if (!spi_is_ready_dt(&spec)) {
-        LOG_ERR("spi not ready");
+        DUST_LOG_ERR("spi not ready");
         return false;
     }
 
@@ -31,7 +30,7 @@ bool Spi::Init(const struct spi_dt_spec& spec)
     rx_set_.buffers = &rx_buf_;
     rx_set_.count   = 1;
 
-    LOG_INF("spi ready");
+    DUST_LOG_INF("spi ready");
 
     return true;
 }

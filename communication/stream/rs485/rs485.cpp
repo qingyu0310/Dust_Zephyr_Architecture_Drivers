@@ -7,12 +7,11 @@
  */
 
 #include "rs485.hpp"
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 #include <string.h>
 
 #pragma message "Compiling Drivers/Communicaiton RS485"
 
-LOG_MODULE_REGISTER(rs485, LOG_LEVEL_INF);
 
 /**
  * @brief UART 事件回调（RS485 内部使用）
@@ -95,28 +94,28 @@ bool Rs485::Init(const struct device* dev, const Config& cfg)
     tx_busy_     = false;
 
     if (!device_is_ready(dev_)) {
-        LOG_ERR("device not ready %s", dev->name);
+        DUST_LOG_ERR("device not ready %s", dev->name);
         return false;
     }
 
     if (dir_ != nullptr) {
         if (!device_is_ready(dir_->port)) {
-            LOG_ERR("dir gpio not ready");
+            DUST_LOG_ERR("dir gpio not ready");
             return false;
         }
         if (gpio_pin_configure_dt(dir_, GPIO_OUTPUT_INACTIVE) != 0) {
-            LOG_ERR("dir gpio config fail");
+            DUST_LOG_ERR("dir gpio config fail");
             return false;
         }
         if (!SetDirection(rx_level_)) {
-            LOG_ERR("set direction fail");
+            DUST_LOG_ERR("set direction fail");
             return false;
         }
     }
 
     int ret = uart_callback_set(dev_, rs485_uart_callback, this);
     if (ret < 0) {
-        LOG_ERR("callback_set fail %d", ret);
+        DUST_LOG_ERR("callback_set fail %d", ret);
         return false;
     }
 
@@ -128,12 +127,12 @@ bool Rs485::Init(const struct device* dev, const Config& cfg)
     dma_buf_size_ = bs;
     ret = uart_rx_enable(dev_, dma_buf_[0], dma_buf_size_, rx_timeout_);
     if (ret < 0) {
-        LOG_ERR("rx_enable fail %d", ret);
+        DUST_LOG_ERR("rx_enable fail %d", ret);
         return false;
     }
 
     ready_ = true;
-    LOG_INF("rs485 ready %s", dev->name);
+    DUST_LOG_INF("rs485 ready %s", dev->name);
     return true;
 }
 

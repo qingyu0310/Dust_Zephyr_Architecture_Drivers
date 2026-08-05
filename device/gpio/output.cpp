@@ -10,11 +10,10 @@
  */
 
 #include "output.hpp"
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
 #pragma message "Compiling Drivers/Device Output"
 
-LOG_MODULE_REGISTER(gpio_out, LOG_LEVEL_INF);
 
 /**
  * @brief 初始化 GPIO 输出引脚
@@ -25,18 +24,18 @@ bool Output::init(const gpio_dt_spec spec, gpio_flags_t extra_flags)
 {
     spec_ = spec;
     if (!device_is_ready(spec.port)) {
-        LOG_ERR("device not ready %s", spec.port->name);
+        DUST_LOG_ERR("device not ready %s", spec.port->name);
         return false;
     }
 
     int ret = gpio_pin_configure_dt(&spec, extra_flags);
     if (ret != 0) {
-        LOG_ERR("config pin %d fail %d", spec.pin, ret);
+        DUST_LOG_ERR("config pin %d fail %d", spec.pin, ret);
         return false;
     }
 
     gpio_pin_set_dt(&spec, 0);
-    LOG_INF("gpio_out ready pin=%d", spec.pin);
+    DUST_LOG_INF("gpio_out ready pin=%d", spec.pin);
 
     return true;
 }

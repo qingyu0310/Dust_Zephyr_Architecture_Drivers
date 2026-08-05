@@ -8,9 +8,8 @@
 
 #include "uart.hpp"
 #include <string.h>
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
-LOG_MODULE_REGISTER(uart, LOG_LEVEL_INF);
 
 #pragma message "Compiling Drivers/Communication Uart DMA"
 
@@ -122,30 +121,30 @@ bool UartDma::Init(const struct device* dev, const Config& cfg)
     Reset();
 
     if (!device_is_ready(dev_)) {
-        LOG_ERR("device not ready %s", dev->name);
+        DUST_LOG_ERR("device not ready %s", dev->name);
         return false;
     }
 
     int ret = uart_callback_set(dev_, uart_dma_callback, this);
     if (ret < 0) {
-        LOG_ERR("callback_set fail %d", ret);
+        DUST_LOG_ERR("callback_set fail %d", ret);
         return false;
     }
 
     if (!ApplyLineConfig()) {
-        LOG_ERR("uart_configure failed");
+        DUST_LOG_ERR("uart_configure failed");
         return false;
     }
 
     ret = uart_rx_enable(dev_, dma_buf_[0], kMaxBufSize, config_.base_cfg.rx_timeout);
     if (ret < 0) {
-        LOG_ERR("rx_enable fail %d", ret);
+        DUST_LOG_ERR("rx_enable fail %d", ret);
         return false;
     }
 
     buf_free_[0] = false;
     atomic_set(&ready_, 1);
-    LOG_INF("uart dma ready %s", dev->name);
+    DUST_LOG_INF("uart dma ready %s", dev->name);
     return true;
 }
 
@@ -180,16 +179,16 @@ uint16_t UartDma::Read(uint8_t* buf, uint16_t max_len)
 bool UartDma::Send(const uint8_t* data, uint32_t len)
 {
     if (!atomic_get(&ready_)) {
-        LOG_ERR("send not ready");
+        DUST_LOG_ERR("send not ready");
         return false;
     }
     if (len == 0 || !tx_buf_) {
-        LOG_ERR("send invalid len=%u tx_buf=%p", len, tx_buf_);
+        DUST_LOG_ERR("send invalid len=%u tx_buf=%p", len, tx_buf_);
         return false;
     }
 
     if (atomic_get(&tx_busy_)) {
-        LOG_ERR("send busy");
+        DUST_LOG_ERR("send busy");
         return false;
     }
 
@@ -198,7 +197,7 @@ bool UartDma::Send(const uint8_t* data, uint32_t len)
     atomic_set(&tx_busy_, 1);
     if (uart_tx(dev_, tx_buf_, len, 0) != 0)
     {
-        LOG_ERR("uart_tx fail len=%u", len);
+        DUST_LOG_ERR("uart_tx fail len=%u", len);
         atomic_set(&tx_busy_, 0);
         return false;
     }
@@ -212,7 +211,7 @@ bool UartDma::StartRx()
 {
     int ret = uart_rx_enable(dev_, dma_buf_[0], kMaxBufSize, config_.base_cfg.rx_timeout);
     if (ret < 0) {
-        LOG_ERR("rx_enable fail %d", ret);
+        DUST_LOG_ERR("rx_enable fail %d", ret);
         return false;
     }
 
@@ -254,7 +253,7 @@ bool UartDma::Reconfigure(const uart_config& cfg)
     bool stopped = StopRx();
     if (!stopped) {
         atomic_set(&restart_on_disabled_, 1);
-        LOG_ERR("Reconfigure: rx_disable failed");
+        DUST_LOG_ERR("Reconfigure: rx_disable failed");
         return false;
     }
 
@@ -263,14 +262,14 @@ bool UartDma::Reconfigure(const uart_config& cfg)
     config_.line_cfg = cfg;
     bool cfg_ok = ApplyLineConfig();
     if (!cfg_ok) {
-        LOG_ERR("Reconfigure: uart_configure failed");
+        DUST_LOG_ERR("Reconfigure: uart_configure failed");
     }
 
     atomic_set(&restart_on_disabled_, 1);
 
     bool rx_ok = StartRx();
     if (!rx_ok) {
-        LOG_ERR("Reconfigure: StartRx failed");
+        DUST_LOG_ERR("Reconfigure: StartRx failed");
     }
     return cfg_ok && rx_ok;
 }
@@ -286,7 +285,7 @@ void UartDma::SetBaudrate(uint32_t baud)
 
     if (atomic_get(&ready_)) {
         k_spin_unlock(&lock_, key);
-        LOG_ERR("cannot set baudrate while uart is running");
+        DUST_LOG_ERR("cannot set baudrate while uart is running");
         return;
     }
 
@@ -294,7 +293,7 @@ void UartDma::SetBaudrate(uint32_t baud)
     k_spin_unlock(&lock_, key);
 
     if (!ApplyLineConfig()) {
-        LOG_ERR("uart_configure failed");
+        DUST_LOG_ERR("uart_configure failed");
     }
 }
 
@@ -309,7 +308,7 @@ void UartDma::SetLineConfig(const uart_config& cfg)
 
     if (atomic_get(&ready_)) {
         k_spin_unlock(&lock_, key);
-        LOG_ERR("cannot set line config while uart is running");
+        DUST_LOG_ERR("cannot set line config while uart is running");
         return;
     }
 
@@ -317,7 +316,7 @@ void UartDma::SetLineConfig(const uart_config& cfg)
     k_spin_unlock(&lock_, key);
 
     if (!ApplyLineConfig()) {
-        LOG_ERR("uart_configure failed");
+        DUST_LOG_ERR("uart_configure failed");
     }
 }
 
@@ -330,7 +329,7 @@ bool UartDma::ApplyLineConfig()
     const auto& lc = config_.line_cfg;
 
     if (lc.baudrate == 0) {
-        LOG_ERR("line_cfg: not fully initialized");
+        DUST_LOG_ERR("line_cfg: not fully initialized");
         return false;
     }
 

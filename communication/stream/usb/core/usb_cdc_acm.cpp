@@ -10,9 +10,8 @@
 
 #include "usb_cdc_acm.hpp"
 
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
-LOG_MODULE_REGISTER(usb_cdc_acm, LOG_LEVEL_INF);
 
 static constexpr uint8_t  kCdcReqSetLineCoding        = 0x20;    // 设置线编码
 static constexpr uint8_t  kCdcReqGetLineCoding        = 0x21;    // 获取线编码
@@ -38,20 +37,20 @@ bool UsbCdcAcm::Init(const UsbCdcAcmConfig& cfg)
 
     auto ep_num = [](uint8_t ep) { return ep & 0x0F; };
     
-    if (!(cfg.notification_ep & 0x80)) { LOG_ERR("notification not IN");    return false; }
-    if (!(cfg.bulk_in_addr    & 0x80)) { LOG_ERR("bulk_in not IN");         return false; }
-    if (  cfg.bulk_out_addr   & 0x80)  { LOG_ERR("bulk_out not OUT");       return false; }
+    if (!(cfg.notification_ep & 0x80)) { DUST_LOG_ERR("notification not IN");    return false; }
+    if (!(cfg.bulk_in_addr    & 0x80)) { DUST_LOG_ERR("bulk_in not IN");         return false; }
+    if (  cfg.bulk_out_addr   & 0x80)  { DUST_LOG_ERR("bulk_out not OUT");       return false; }
 
-    if (ep_num(cfg.notification_ep) == 0 || ep_num(cfg.notification_ep) > 15)   { LOG_ERR("bad notification ep num");   return false; }
-    if (ep_num(cfg.bulk_out_addr)   == 0 || ep_num(cfg.bulk_out_addr)   > 15)   { LOG_ERR("bad bulk_out ep num");       return false; }
-    if (ep_num(cfg.bulk_in_addr)    == 0 || ep_num(cfg.bulk_in_addr)    > 15)   { LOG_ERR("bad bulk_in ep num");        return false; }
+    if (ep_num(cfg.notification_ep) == 0 || ep_num(cfg.notification_ep) > 15)   { DUST_LOG_ERR("bad notification ep num");   return false; }
+    if (ep_num(cfg.bulk_out_addr)   == 0 || ep_num(cfg.bulk_out_addr)   > 15)   { DUST_LOG_ERR("bad bulk_out ep num");       return false; }
+    if (ep_num(cfg.bulk_in_addr)    == 0 || ep_num(cfg.bulk_in_addr)    > 15)   { DUST_LOG_ERR("bad bulk_in ep num");        return false; }
 
-    if (cfg.notification_ep == cfg.bulk_in_addr)     { LOG_ERR("IN eps collide");           return false; }
-    if (cfg.notification_ep == cfg.bulk_out_addr)    { LOG_ERR("notification=bulk_out");    return false; }
-    if (cfg.bulk_in_addr    == cfg.bulk_out_addr)    { LOG_ERR("bulk IN=OUT");              return false; }
-    if (cfg.control_interface == cfg.data_interface) { LOG_ERR("interfaces same");          return false; }
-    if (cfg.notification_mps == 0)                   { LOG_ERR("notification_mps=0");       return false; }
-    if (cfg.notification_interval == 0)              { LOG_ERR("notification_interval=0");  return false; }
+    if (cfg.notification_ep == cfg.bulk_in_addr)     { DUST_LOG_ERR("IN eps collide");           return false; }
+    if (cfg.notification_ep == cfg.bulk_out_addr)    { DUST_LOG_ERR("notification=bulk_out");    return false; }
+    if (cfg.bulk_in_addr    == cfg.bulk_out_addr)    { DUST_LOG_ERR("bulk IN=OUT");              return false; }
+    if (cfg.control_interface == cfg.data_interface) { DUST_LOG_ERR("interfaces same");          return false; }
+    if (cfg.notification_mps == 0)                   { DUST_LOG_ERR("notification_mps=0");       return false; }
+    if (cfg.notification_interval == 0)              { DUST_LOG_ERR("notification_interval=0");  return false; }
 
     cfg_    = cfg;
 
@@ -81,7 +80,7 @@ bool UsbCdcAcm::OnConfigured(bool configured, Speed speed)
     {
         bulk_mps_ = (speed == Speed::High) ? 512 : 64;
 
-        LOG_INF("CDC configured, speed=%s MPS=%u", (speed == Speed::High) ? "HS" : "FS", bulk_mps_);
+        DUST_LOG_INF("CDC configured, speed=%s MPS=%u", (speed == Speed::High) ? "HS" : "FS", bulk_mps_);
         return true;
     }
     else
@@ -199,7 +198,7 @@ bool UsbCdcAcm::OnSetControlLineState(const SetupPacket& setup, uint8_t* data, u
 
     dtr_ = (setup.w_value & 0x01) != 0;
     rts_ = (setup.w_value & 0x02) != 0;
-    LOG_INF("DTR=%d RTS=%d", dtr_, rts_);
+    DUST_LOG_INF("DTR=%d RTS=%d", dtr_, rts_);
     length = 0;
 
     return true;
@@ -215,7 +214,7 @@ bool UsbCdcAcm::OnSendBreak(const SetupPacket& setup, uint8_t* data, uint16_t& l
     if (setup.w_index != cfg_.control_interface)    return false;
     if (setup.w_length != 0)                        return false;
 
-    LOG_INF("BREAK value=%u", setup.w_value);
+    DUST_LOG_INF("BREAK value=%u", setup.w_value);
     length = 0;
 
     return true;
@@ -229,7 +228,7 @@ bool UsbCdcAcm::CompleteControlOut(const SetupPacket& setup, const uint8_t* data
     if (setup.bm_request_type == kCdcBmHostToDev && setup.b_request == kCdcReqSetLineCoding && setup.w_index == cfg_.control_interface &&
         setup.w_length == kLineCodingLen && length == kLineCodingLen && data != nullptr && DecodeLineCoding(data, line_coding_)) 
     {
-        LOG_INF("line_coding updated: rate=%u", line_coding_.dte_rate);
+        DUST_LOG_INF("line_coding updated: rate=%u", line_coding_.dte_rate);
         return true;
     }
     return false;

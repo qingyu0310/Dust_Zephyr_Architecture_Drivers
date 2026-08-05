@@ -10,9 +10,8 @@
 
 #include "usb_dev_port.hpp"
 #include "usb_cdc_acm.hpp"
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
-LOG_MODULE_REGISTER(usb_dev_port, LOG_LEVEL_INF);
 
 //  —————————————————————————— 初始化 ——————————————————————————
 
@@ -27,7 +26,7 @@ bool UsbDevPort::Init(UsbHal& hal, const UsbHal::Config& hal_cfg, const UsbCdcAc
     if (ready_) return true;
     hal_ = &hal;
     if (!cdc_acm_.Init(cdc_cfg)) {
-        LOG_ERR("CDC ACM init failed");
+        DUST_LOG_ERR("CDC ACM init failed");
         return false;
     }
     if (!hal_->Init(hal_cfg, HalEvent, this)) return false;
@@ -276,7 +275,7 @@ bool UsbDevPort::SubmitDataIn(const uint8_t* data, uint16_t len)
 
     if (!hal_->Ep0StartIn(data, len)) 
     {
-        LOG_ERR("SubmitDataIn(len=%u) failed", len);
+        DUST_LOG_ERR("SubmitDataIn(len=%u) failed", len);
         ep0_stage_ = Ep0Stage::Idle;
         hal_->EpStall(0x00, true);
         return false;
@@ -293,7 +292,7 @@ bool UsbDevPort::SubmitDataOut(uint8_t* data, uint16_t len)
 
     if (!hal_->Ep0StartOut(data, len)) 
     {
-        LOG_ERR("SubmitDataOut(len=%u) failed", len);
+        DUST_LOG_ERR("SubmitDataOut(len=%u) failed", len);
         ep0_stage_ = Ep0Stage::Idle;
         hal_->EpStall(0x00, true);
         return false;
@@ -310,7 +309,7 @@ bool UsbDevPort::SubmitStatusIn()
 
     if (!hal_->Ep0StatusIn()) 
     {
-        LOG_ERR("SubmitStatusIn failed");
+        DUST_LOG_ERR("SubmitStatusIn failed");
         ep0_stage_ = Ep0Stage::Idle;
         hal_->EpStall(0x00, true);
         return false;
@@ -327,7 +326,7 @@ bool UsbDevPort::SubmitStatusOut()
 
     if (!hal_->Ep0StatusOut()) 
     {
-        LOG_ERR("SubmitStatusOut failed");
+        DUST_LOG_ERR("SubmitStatusOut failed");
         ep0_stage_ = Ep0Stage::Idle;
         hal_->EpStall(0x00, true);
         return false;
@@ -375,7 +374,7 @@ void UsbDevPort::HandleTransferComplete(const UsbHal::Event& event)
             case Ep0Stage::StatusOut:
             {
                 if (event.error) {
-                    LOG_ERR("EP0 STATUS error");
+                    DUST_LOG_ERR("EP0 STATUS error");
                     hal_->EpStall(0x00, true);
                 }
                 ep0_stage_ = Ep0Stage::Idle;
@@ -398,7 +397,7 @@ void UsbDevPort::HandleTransferComplete(const UsbHal::Event& event)
                 EndpointConfig ep_cfg {event.endpoint, EndpointType::Bulk,
                                        cdc_acm_.GetBulkMps(), 0};
                 if (!hal_->EpOpen(ep_cfg)) {
-                    LOG_ERR("IN ep 0x%02x reopen failed", event.endpoint);
+                    DUST_LOG_ERR("IN ep 0x%02x reopen failed", event.endpoint);
                 }
             }
         } else if (event.endpoint == cdc_acm_.GetBulkOutEp() && state_ == DeviceState::Configured) {
@@ -432,7 +431,7 @@ bool UsbDevPort::SetupCdcEndpoints()
     bool in_open  = out_open && hal_->EpOpen(in_ep_cfg);
 
     if (!int_open || !out_open || !in_open) {
-        LOG_ERR("CDC endpoint open failed");
+        DUST_LOG_ERR("CDC endpoint open failed");
         if (in_open)  hal_->EpClose(in_ep_cfg.address);
         if (out_open) hal_->EpClose(out_ep_cfg.address);
         if (int_open) hal_->EpClose(int_ep.address);
@@ -440,7 +439,7 @@ bool UsbDevPort::SetupCdcEndpoints()
     }
 
     if (!hal_->EpStartRx(out_ep, mps)) {
-        LOG_ERR("First EpStartRx failed");
+        DUST_LOG_ERR("First EpStartRx failed");
         hal_->EpClose(in_ep_cfg.address);
         hal_->EpClose(out_ep_cfg.address);
         hal_->EpClose(int_ep.address);
@@ -460,7 +459,7 @@ bool UsbDevPort::SetupCdcEndpoints()
 void UsbDevPort::RequeueRx(uint8_t ep)
 {
     if (!hal_->EpStartRx(ep, cdc_acm_.GetBulkMps())) {
-        LOG_ERR("RX re-submit failed on ep 0x%02x, recovering", ep);
+        DUST_LOG_ERR("RX re-submit failed on ep 0x%02x, recovering", ep);
         RecoverRxEndpoint(ep);
     }
 }
@@ -475,17 +474,17 @@ void UsbDevPort::RequeueRx(uint8_t ep)
  */
 void UsbDevPort::RecoverRxEndpoint(uint8_t ep)
 {
-    LOG_ERR("RX error on ep 0x%02x, recovering", ep);
+    DUST_LOG_ERR("RX error on ep 0x%02x, recovering", ep);
     hal_->EpStall(ep, false);
     hal_->EpClose(ep);
 
     EndpointConfig ep_cfg {ep, EndpointType::Bulk, cdc_acm_.GetBulkMps(), 0};
     if (hal_->EpOpen(ep_cfg)) {
         if (!hal_->EpStartRx(ep, cdc_acm_.GetBulkMps())) {
-            LOG_ERR("RX recovery submit failed on ep 0x%02x", ep);
+            DUST_LOG_ERR("RX recovery submit failed on ep 0x%02x", ep);
         }
     } else {
-        LOG_ERR("RX recovery failed on ep 0x%02x", ep);
+        DUST_LOG_ERR("RX recovery failed on ep 0x%02x", ep);
     }
 }
 

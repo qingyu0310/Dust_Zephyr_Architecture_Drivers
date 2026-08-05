@@ -10,11 +10,10 @@
  */
 
 #include "pwm.hpp"
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
 #pragma message "Compiling Drivers/Device Pwm"
 
-LOG_MODULE_REGISTER(pwm, LOG_LEVEL_INF);
 
 /**
  * @brief 初始化 PWM 输出
@@ -24,15 +23,15 @@ bool Pwm::init(const pwm_dt_spec& spec)
 {
     spec_ = spec;
     if (!device_is_ready(spec.dev)) {
-        LOG_ERR("device not ready %s", spec.dev->name);
+        DUST_LOG_ERR("device not ready %s", spec.dev->name);
         return false;
     }
 
     if (!SetPulse(0)) {
-        LOG_ERR("set pulse 0 fail");
+        DUST_LOG_ERR("set pulse 0 fail");
         return false;
     }
-    LOG_INF("pwm ready ch=%d", spec.channel);
+    DUST_LOG_INF("pwm ready ch=%d", spec.channel);
     return true;
 }
 
@@ -44,7 +43,7 @@ bool Pwm::SetPulse(uint32_t pulse)
 {
     int ret = pwm_set_pulse_dt(&spec_, pulse);
     if (ret != 0) {
-        LOG_ERR("set pulse %u fail %d ch=%u", pulse, ret, spec_.channel);
+        DUST_LOG_ERR("set pulse %u fail %d ch=%u", pulse, ret, spec_.channel);
         return false;
     }
     return true;
@@ -76,7 +75,7 @@ bool Pwm::SetPeriodAndPulse(uint32_t period, uint32_t pulse)
 {
     int ret = pwm_set_dt(&spec_, period, pulse);
     if (ret != 0) {
-        LOG_ERR("set period=%u pulse=%u fail %d ch=%u", period, pulse, ret, spec_.channel);
+        DUST_LOG_ERR("set period=%u pulse=%u fail %d ch=%u", period, pulse, ret, spec_.channel);
         return false;
     }
 

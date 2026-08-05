@@ -7,11 +7,10 @@
  */
 
 #include "can.hpp"
-#include <zephyr/logging/log.h>
+#include "log.hpp"
 
 #pragma message "Compiling Drivers/Communicaiton Can"
 
-LOG_MODULE_REGISTER(can, LOG_LEVEL_INF);
 
 /**
  * @brief 初始化 CAN 设备并注册接收过滤器
@@ -24,13 +23,13 @@ bool Can::Init(const struct device *dev, const struct can_filter &filter, can_mo
     dev_ = dev;
     
     if (!device_is_ready(dev_)) {
-        LOG_ERR("device not ready %s", dev->name);
+        DUST_LOG_ERR("device not ready %s", dev->name);
         return false;
     }
 
     filter_id_ = can_add_rx_filter(dev_, rx_callback, this, &filter);
     if (filter_id_ < 0) {
-        LOG_ERR("add_rx_filter fail id=0x%x", filter.id);
+        DUST_LOG_ERR("add_rx_filter fail id=0x%x", filter.id);
         return false;
     }
 
@@ -39,13 +38,13 @@ bool Can::Init(const struct device *dev, const struct can_filter &filter, can_mo
     }
 
     if (can_start(dev_) != 0) {
-        LOG_ERR("can_start fail %s", dev->name);
+        DUST_LOG_ERR("can_start fail %s", dev->name);
         return false;
     }
 
     can_set_state_change_callback(dev_, state_callback, nullptr);
 
-    LOG_INF("can ready %s filter=%d", dev->name, filter_id_);
+    DUST_LOG_INF("can ready %s filter=%d", dev->name, filter_id_);
     return true;
 }
 
@@ -107,5 +106,5 @@ void Can::rx_callback(const struct device *dev, struct can_frame *frame, void *u
 void Can::state_callback(const struct device *dev, enum can_state state, can_bus_err_cnt err_cnt, void *user_data)
 {
     (void)user_data;
-    LOG_ERR("can %s state=%d tx_err=%u rx_err=%u", dev->name, state, err_cnt.tx_err_cnt, err_cnt.rx_err_cnt);
+    DUST_LOG_ERR("can %s state=%d tx_err=%u rx_err=%u", dev->name, state, err_cnt.tx_err_cnt, err_cnt.rx_err_cnt);
 }
