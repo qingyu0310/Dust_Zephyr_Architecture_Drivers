@@ -1,9 +1,9 @@
 /**
  * @file usb_rx_queue.hpp
  * @author qingyu
- * @brief USB 接收队列 — 封装 BipBuffer + 锁 + 通知 semaphore
- * @version 0.1
- * @date 2026-07-27
+ * @brief USB 接收队列 — 模板化 BipBuffer + 锁 + overflow 计数
+ * @version 0.2
+ * @date 2026-08-07
  *
  * 职责：
  *   - Push（ISR 上下文）：写入数据，超出容量计数 overflow
@@ -21,11 +21,13 @@
 #include "bipbuf.hpp"
 
 /**
- * @brief USB 接收队列
+ * @brief USB 接收队列模板
+ * @tparam kBufSize  BipBuffer 容量（字节）
  *
- * 内部使用 BipBuffer<1024>，通过 spinlock 保护 ISR/线程并发访问。
- * 通知由 Usb 顶层的 Stream::sem_ 统一负责。
+ * BipBuffer 大小由使用方（Usb 顶层）实例化时指定，不依赖具体 HAL。
+ * 通过 spinlock 保护 ISR/线程并发访问，通知由 Stream::sem_ 统一负责。
  */
+template <uint16_t kBufSize>
 class UsbRxQueue final
 {
 public:
@@ -99,7 +101,7 @@ public:
     }
 
 private:
-    BipBuffer<1024> buf_ {};
+    BipBuffer<kBufSize> buf_ {};
     k_spinlock      lock_ {};
     uint32_t        overflow_ = 0;
 };

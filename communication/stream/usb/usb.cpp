@@ -122,7 +122,7 @@ void Usb::OnBulkIn(uint16_t len)
  */
 bool Usb::Send(const uint8_t* data, uint32_t len)
 {
-    if (data == nullptr || len == 0 || len > kMaxBufSize) {
+    if (data == nullptr || len == 0 || len > kTxBufSize) {
         return false;
     }
 

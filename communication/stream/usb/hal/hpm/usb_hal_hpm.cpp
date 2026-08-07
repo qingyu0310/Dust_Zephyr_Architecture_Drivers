@@ -35,8 +35,8 @@ static constexpr uint32_t AlignUpCache(uint32_t v)        { return AlignUp(v, kC
 // Nocache 资源
 __attribute__((section(".nocache"), aligned(2048)))           static uint8_t             s_dcd_data[AlignUp(sizeof(dcd_data_t), 2048)];
 __attribute__((section(".nocache")))                          static usb_device_handle_t s_handle;
-__attribute__((section(".nocache"), aligned(kCacheLineSize))) static uint8_t             s_rx_buf[2][512];
-__attribute__((section(".nocache"), aligned(kCacheLineSize))) static uint8_t             s_tx_buf[512];
+__attribute__((section(".nocache"), aligned(kCacheLineSize))) static uint8_t             s_rx_buf[2][UsbHal::kRxBufSize];
+__attribute__((section(".nocache"), aligned(kCacheLineSize))) static uint8_t             s_tx_buf[UsbHal::kTxBufSize];
 __attribute__((section(".nocache"), aligned(kCacheLineSize))) static uint8_t             s_setup_buf[8];
 
 extern "C" void usb_isr_entry(const void* arg)

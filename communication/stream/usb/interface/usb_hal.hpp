@@ -29,6 +29,10 @@
 class UsbHal
 {
 public:
+    // DMA 收发单缓冲大小（hal 分配数组 + 上层单次传输上限共用）
+    static constexpr uint16_t kTxBufSize = 256;   // 发送单缓冲
+    static constexpr uint16_t kRxBufSize = 256;   // 接收单缓冲
+
     /**
      * @brief HAL 事件类型
      */

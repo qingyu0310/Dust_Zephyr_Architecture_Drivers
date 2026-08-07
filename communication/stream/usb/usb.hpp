@@ -16,6 +16,7 @@
 #include "usb_cdc_config.hpp"
 #include "usb_dev_port.hpp"
 #include "usb_rx_queue.hpp"
+#include "usb_hal.hpp"
 
 /**
  * @brief USB CDC ACM 顶层封装
@@ -28,6 +29,9 @@ namespace usb {
 class Usb final : public Stream
 {
 public:
+	static constexpr uint16_t kTxBufSize = UsbHal::kTxBufSize;
+    static constexpr uint16_t kRxBufSize = UsbHal::kRxBufSize;
+
     bool     Init(const UsbHal::Config& cfg, const UsbCdcAcmConfig& cdc_cfg = UsbCdcAcmConfig{});
     bool     IsReady()  const { return ready_; }
     bool     IsTxBusy() const { return tx_busy_; }
@@ -36,8 +40,6 @@ public:
     bool     Send(const uint8_t* data, uint32_t len) override;
 
 private:
-    static constexpr uint16_t kMaxBufSize = 512;
-
     UsbDevPort device_      {};                     // USB 设备核心
 
     atomic_t   ready_        = ATOMIC_INIT(0);      // Init 完成
@@ -46,7 +48,7 @@ private:
     uint16_t   bulk_mps_     = 64;                  // 批量端点 MPS
     k_spinlock lock_        {};                     // 并发锁
 
-    UsbRxQueue rx_queue_ {};                        // 接收队列
+    UsbRxQueue<kRxBufSize> rx_queue_ {};            // 接收队列
     
     // 从 CDC 配置查询 bulk 端点地址
     uint8_t     GetBulkOutEp() { return device_.GetCdcAcm().GetBulkOutEp(); }
