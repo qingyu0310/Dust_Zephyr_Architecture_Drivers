@@ -40,7 +40,33 @@ if(CONFIG_DUST_DEV_PWM)
     target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pwm)
 endif()
 
-# USB 协议栈（归位后独立库，参考 CherryUSB 装配：drivers 层 add_subdirectory + 子目录 zephyr_library）
+# USB 协议栈（并入 app target，与 can/uart 同构：Kconfig 门禁 → 编译期装配；多板卡 HAL 按门禁隔离）
+if(CONFIG_DUST_USB_DEVICE_STACK)
+    target_sources(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_dev_port.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_cdc_acm.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_descriptor.cpp)
+    target_include_directories(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core)
+endif()
+if(CONFIG_DUST_USB_DEVICE_HAL_HPM)
+    target_sources(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/hal/hpm/usb_hal_hpm.cpp
+        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/components/usb/device/hpm_usb_device.c
+        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/drivers/src/hpm_usb_drv.c)
+    target_include_directories(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/hal/hpm
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
+        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/components/usb/device
+        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/drivers/inc)
+endif()
 if(CONFIG_DUST_COM_USB)
-    add_subdirectory(communication/stream/usb)
+    target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/usb.cpp)
+    target_include_directories(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/uart
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream)
 endif()
