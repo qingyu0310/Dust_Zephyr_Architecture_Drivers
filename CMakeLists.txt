@@ -50,17 +50,6 @@ if(CONFIG_DUST_USB_DEVICE_STACK)
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core)
 endif()
-if(CONFIG_DUST_USB_DEVICE_HAL_HPM)
-    target_sources(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/hal/hpm/usb_hal_hpm.cpp
-        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/components/usb/device/hpm_usb_device.c
-        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/drivers/src/hpm_usb_drv.c)
-    target_include_directories(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/hal/hpm
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
-        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/components/usb/device
-        ${SDK_GLUE_DIR}/../sdk_env/hpm_sdk/drivers/inc)
-endif()
 if(CONFIG_DUST_COM_USB)
     target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/usb.cpp)
     target_include_directories(app PRIVATE
