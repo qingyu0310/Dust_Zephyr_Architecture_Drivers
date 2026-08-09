@@ -36,5 +36,5 @@ public:
     virtual uint16_t Read(uint8_t* buf, uint16_t max_len) = 0;
     virtual bool     Send(const uint8_t* data, uint32_t len) = 0;
 
-    k_sem sem_ {};                   // 接收通知信号量
+    k_sem sem_ {};                   // 通道事件信号量（接收数据 / 日志发送需要驱动）
 };
