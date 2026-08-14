@@ -2,8 +2,8 @@
  * @file usb_dev_port.cpp
  * @author qingyu
  * @brief USB 端口管理核心 — EP0 控制传输 + 标准请求处理 + 端口生命周期
- * @version 0.1
- * @date 2026-07-27
+ * @version 0.2
+ * @date 2026-08-14
  *
  * @copyright Copyright (c) 2026
  */

@@ -3,9 +3,9 @@
 config DUST_USB_DEVICE_STACK
     bool
     select DUST_USB_DEVICE_CDC_ACM
-    # 各芯片 HAL 用 DTS 条件 select（DUST_USB_DEVICE_HAL_HPM 定义在 zephyr_user/drivers/Kconfig）
+    # 各芯片 HAL 用 DTS 条件 select（HAL 定义在 zephyr_user/drivers/Kconfig）
     select DUST_USB_DEVICE_HAL_HPM if DT_HAS_HPMICRO_HPM_DUSTUSB_ENABLED
-    # select DUST_USB_DEVICE_HAL_STM32 if DT_HAS_ST_STM32_..._ENABLED   # 预留多芯片
+    select DUST_USB_DEVICE_HAL_STM32 if DT_HAS_ST_ST_DUSTUSB_ENABLED
 
 config DUST_USB_DEVICE_CDC_ACM
     bool
