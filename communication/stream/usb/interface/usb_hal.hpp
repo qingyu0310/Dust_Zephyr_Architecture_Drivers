@@ -54,7 +54,7 @@ public:
         uint16_t       length   = 0;                        // 数据长度
         bool           error    = false;                    // 传输错误标志
         uint8_t        setup[8] {};                         // SETUP 包（仅 SetupReceived 有效）
-        Speed     speed    = Speed::Full;         // 连接速度
+        Speed     	   speed    = Speed::Full;         		// 连接速度
     };
 
     // 事件回调类型

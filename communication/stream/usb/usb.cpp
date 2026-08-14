@@ -2,8 +2,8 @@
  * @file usb.cpp
  * @author qingyu
  * @brief USB CDC ACM 顶层封装实现
- * @version 0.4
- * @date 2026-07-27
+ * @version 0.5
+ * @date 2026-08-13
  *
  * @copyright Copyright (c) 2026
  *
@@ -52,7 +52,7 @@ bool Usb::Init(const UsbHal::Config& cfg, const UsbCdcAcmConfig& cdc_cfg)
  */
 void Usb::OnDataEvent(void* ctx, uint8_t ep, const uint8_t* data, uint16_t len)
 {
-    if (ctx != nullptr) 
+    if (ctx != nullptr)
     {
         Usb* self = static_cast<Usb*>(ctx);
 
