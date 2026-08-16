@@ -71,6 +71,7 @@ config DUST_COM_USB
     bool "USB CDC ACM driver"
     select DUST_BUF_BIPBUF
     select DUST_USB_DEVICE_STACK
+    select DYNAMIC_INTERRUPTS
     help
         Enable the C++ USB device CDC ACM stream.
 
