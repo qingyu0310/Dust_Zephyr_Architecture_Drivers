@@ -77,8 +77,7 @@ bool Spi::Read(uint8_t* data, uint32_t len)
  * 用 SPI_HOLD_ON_CS 保证 write+read 之间 CS 不断，
  * 避免半双工 split 导致 CS 释放。
  */
-bool Spi::WriteThenRead(const uint8_t* tx_data, uint32_t tx_len,
-                        uint8_t* rx_data, uint32_t rx_len)
+bool Spi::WriteThenRead(const uint8_t* tx_data, uint32_t tx_len, uint8_t* rx_data, uint32_t rx_len)
 {
     if (!ready_ || tx_data == nullptr || tx_len == 0 || rx_data == nullptr || rx_len == 0) {
         return false;
@@ -87,7 +86,7 @@ bool Spi::WriteThenRead(const uint8_t* tx_data, uint32_t tx_len,
     const uint8_t op_saved = spec_.config.operation;
 
     // 写阶段：HOLD_ON_CS → CS 保持选通
-    spec_.config.operation = op_saved | SPI_HOLD_ON_CS;
+    spec_.config.operation = op_saved |  SPI_HOLD_ON_CS;
     if (!PrepareTx(tx_data, tx_len) || spi_write_dt(&spec_, &tx_set_) != 0) {
         spec_.config.operation = op_saved;
         return false;
