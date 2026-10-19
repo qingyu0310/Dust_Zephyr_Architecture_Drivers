@@ -88,12 +88,12 @@ private:
     bool PrepareTx(const uint8_t* data, uint32_t len);
     bool PrepareRx(uint8_t* data, uint32_t len);
 
-    spi_buf     tx_buf_ {};     // 发送缓冲描述符
-    spi_buf_set tx_set_ {};     // 发送缓冲集合
+    spi_buf     tx_buf_ {};     	// 发送缓冲描述符
+    spi_buf_set tx_set_ {};     	// 发送缓冲集合
 
-    spi_buf     rx_buf_ {};     // 接收缓冲描述符
-    spi_buf_set rx_set_ {};     // 接收缓冲集合
+    spi_buf     rx_buf_ {};     	// 接收缓冲描述符
+    spi_buf_set rx_set_ {};     	// 接收缓冲集合
 
-    spi_dt_spec spec_ {};       // 设备树配置
+    spi_dt_spec spec_   {};       	// 设备树配置
     bool        ready_ = false;
 };
