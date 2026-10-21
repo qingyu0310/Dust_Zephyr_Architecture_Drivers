@@ -90,7 +90,6 @@ public:
     using TxCallback = void (*)(const device *dev, uint8_t error, void *user_data);
     using RxCallback = void (*)(can_frame &frame, void *user_data);
 
-
     bool Init(const device *dev, const can_filter &filter, can_mode_t ctrl_mode = CAN_MODE_NORMAL);
     void SetTxCallback(TxCallback cb, void *user_data = nullptr);
     void SetRxCallback(RxCallback cb, void *user_data = nullptr);

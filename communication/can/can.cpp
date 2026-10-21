@@ -11,14 +11,13 @@
 
 #pragma message "Compiling Drivers/Communicaiton Can"
 
-
 /**
  * @brief 初始化 CAN 设备并注册接收过滤器
  * @param dev        CAN 设备
  * @param filter     接收过滤器
  * @param ctrl_mode  控制器模式（默认正常模式）
  */
-bool Can::Init(const struct device *dev, const struct can_filter &filter, can_mode_t ctrl_mode)
+bool Can::Init(const device *dev, const can_filter &filter, can_mode_t ctrl_mode)
 {
     dev_ = dev;
     
@@ -70,7 +69,7 @@ void Can::SetRxCallback(RxCallback cb, void *user_data)
  * @brief 发送 CAN 帧（阻塞）
  * @param frame  CAN 帧
  */
-bool Can::Send(const struct can_frame *frame)
+bool Can::Send(const can_frame *frame)
 {
     if (dev_ == nullptr) return false;
     int ret = can_send(dev_, frame, K_NO_WAIT, tx_callback, this);
@@ -80,7 +79,7 @@ bool Can::Send(const struct can_frame *frame)
 /**
  * @brief CAN TX 完成回调（转进外部用户回调）
  */
-void Can::tx_callback(const struct device *dev, int error, void *user_data)
+void Can::tx_callback(const device *dev, int error, void *user_data)
 {
     auto *self = static_cast<Can*>(user_data);
     if (self->tx_cb_ != nullptr) {
@@ -91,7 +90,7 @@ void Can::tx_callback(const struct device *dev, int error, void *user_data)
 /**
  * @brief CAN RX 回调（转进外部用户回调）
  */
-void Can::rx_callback(const struct device *dev, struct can_frame *frame, void *user_data)
+void Can::rx_callback(const device *dev, can_frame *frame, void *user_data)
 {
     (void)dev;
     auto *self = static_cast<Can*>(user_data);
@@ -103,7 +102,7 @@ void Can::rx_callback(const struct device *dev, struct can_frame *frame, void *u
 /**
  * @brief CAN 状态变化回调 — 打印 error passive / bus-off 等状态
  */
-void Can::state_callback(const struct device *dev, enum can_state state, can_bus_err_cnt err_cnt, void *user_data)
+void Can::state_callback(const device *dev, can_state state, can_bus_err_cnt err_cnt, void *user_data)
 {
     (void)user_data;
     DUST_LOG_ERR("can %s state=%d tx_err=%u rx_err=%u", dev->name, state, err_cnt.tx_err_cnt, err_cnt.rx_err_cnt);
