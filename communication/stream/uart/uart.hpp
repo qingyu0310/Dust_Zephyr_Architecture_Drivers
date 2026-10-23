@@ -60,7 +60,7 @@
  */
 class UartDma final : public Stream
 {
-    friend void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* user_data);
+    friend void uart_dma_callback(const device* dev, struct uart_event* evt, void* user_data);
 
 public:
     struct Config 
