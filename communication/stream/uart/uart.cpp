@@ -19,6 +19,15 @@
  * 处理 Zephyr 异步 UART 驱动的事件：数据就绪、缓冲交换、接收停用、发送完成。
  * 数据就绪时存入 BipBuffer，通过信号量通知等待线程。
  *
+ * switch 只做分发，goto 跳到各自独立的处理段，处理段与 switch 在同一作用域，
+ * 因此能直接用 self / dev / evt，也不必为每个事件建一个只调用一次的 lambda。
+ *
+ * 这个写法只适用于「事件分支彼此独立、每段十几行以内、共享同一套上下文」的
+ * 单点分发。不要推广到别处：分支之间要共享状态机、需要中途合并出口、或者
+ * 处理段超过一屏时，应当拆成独立函数，goto 会让控制流变难跟。
+ *
+ * 维护注意：每个标签段必须自己 return，漏写会顺序执行滑进下一段。
+ *
  * @param dev       UART 设备
  * @param evt       异步事件
  * @param user_data UartDma 实例指针
@@ -27,81 +36,86 @@ void uart_dma_callback(const struct device* dev, struct uart_event* evt, void* u
 {
     auto* self = static_cast<UartDma*>(user_data);
 
-    auto on_rx_rdy = [self](const uint8_t* data, uint16_t len)
+    switch (evt->type)
     {
-        if (len == 0) return;
+        case UART_RX_RDY:           goto l_rx_rdy;
+        case UART_RX_BUF_REQUEST:   goto l_buf_request;
+        case UART_RX_BUF_RELEASED:  goto l_buf_released;
+        case UART_RX_DISABLED:      goto l_rx_disabled;
+        case UART_TX_DONE:          goto l_tx_done;
+        default:                    return;
+    }
+
+l_rx_rdy:
+    {
+        const uint16_t len = evt->data.rx.len;
+        if (len == 0) {
+            return;
+        }
+
+        const uint8_t* data = evt->data.rx.buf + evt->data.rx.offset;
+
         if (self->config_.base_cfg.rx_cb) {
             self->config_.base_cfg.rx_cb(const_cast<uint8_t*>(data), len);
-        } else {
-            unsigned key = irq_lock();
-            uint8_t* p = self->rx_bip_.Reserve(len);
-            if (p) { memcpy(p, data, len); self->rx_bip_.Commit(len); }
-            irq_unlock(key);
-            k_sem_give(&self->sem_);
+            return;
         }
-    };
 
-    auto on_buf_request = [self, dev]()
+        unsigned key = irq_lock();
+        uint8_t* p = self->rx_bip_.Reserve(len);
+        if (p) {
+            memcpy(p, data, len);
+            self->rx_bip_.Commit(len);
+        }
+        irq_unlock(key);
+        k_sem_give(&self->sem_);
+        return;
+    }
+
+l_buf_request:
     {
-        int next = self->buf_free_[0] ? 0 : (self->buf_free_[1] ? 1 : -1);
+        const int next = self->buf_free_[0] ? 0 : (self->buf_free_[1] ? 1 : -1);
         if (next >= 0) {
             self->buf_free_[next] = false;
             self->cur_buf_ = next;
             uart_rx_buf_rsp(dev, self->dma_buf_[next], UartDma::kMaxBufSize);
         }
-    };
+        return;
+    }
 
-    auto on_buf_released = [self, evt]()
+l_buf_released:
     {
-        if (evt->data.rx_buf.buf == self->dma_buf_[0])
+        if (evt->data.rx_buf.buf == self->dma_buf_[0]) {
             self->buf_free_[0] = true;
-        else if (evt->data.rx_buf.buf == self->dma_buf_[1])
+        } else if (evt->data.rx_buf.buf == self->dma_buf_[1]) {
             self->buf_free_[1] = true;
-    };
+        }
+        return;
+    }
 
-    auto on_rx_disabled = [self, dev]()
+l_rx_disabled:
     {
         self->cur_buf_ = 0;
         self->buf_free_[0] = true;
         self->buf_free_[1] = true;
-        if (atomic_get(&self->restart_on_disabled_)) {
-            int32_t timeout = self->config_.base_cfg.rx_timeout;
-            int ret = uart_rx_enable(dev, self->dma_buf_[0], UartDma::kMaxBufSize, timeout);
-            if (ret < 0) {
-                atomic_set(&self->ready_, 0);
-            } else {
-                atomic_set(&self->ready_, 1);
-            }
-        } else {
-            atomic_set(&self->ready_, 0);
-        }
-    };
 
-    auto on_tx_done = [self]()
+        if (!atomic_get(&self->restart_on_disabled_)) {
+            atomic_set(&self->ready_, 0);
+            return;
+        }
+
+        const int32_t timeout = self->config_.base_cfg.rx_timeout;
+        const int ret = uart_rx_enable(dev, self->dma_buf_[0], UartDma::kMaxBufSize, timeout);
+        atomic_set(&self->ready_, ret < 0 ? 0 : 1);
+        return;
+    }
+
+l_tx_done:
     {
         atomic_set(&self->tx_busy_, 0);
-        if (self->config_.base_cfg.tx_cb) { self->config_.base_cfg.tx_cb(); }
-    };
-
-    switch (evt->type)
-    {
-        case UART_RX_RDY:
-            on_rx_rdy(evt->data.rx.buf + evt->data.rx.offset, evt->data.rx.len);
-            break;
-        case UART_RX_BUF_REQUEST:
-            on_buf_request();
-            break;
-        case UART_RX_BUF_RELEASED:
-            on_buf_released();
-            break;
-        case UART_RX_DISABLED:
-            on_rx_disabled();
-            break;
-        case UART_TX_DONE:
-            on_tx_done();
-            break;
-        default:
-            break;
+        if (self->config_.base_cfg.tx_cb) {
+            self->config_.base_cfg.tx_cb();
+        }
+        return;
     }
 }
 
