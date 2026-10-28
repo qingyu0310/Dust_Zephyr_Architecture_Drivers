@@ -59,3 +59,21 @@ if(CONFIG_DUST_COM_USB)
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/uart
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream)
 endif()
+
+# EtherCAT 从站（倍福 SSC 5.13 + C++ 封装；端口层由 sdk_glue_user 提供）
+# ssc/digital_io.c 不编译：它是示例 application（含 main 与 APPL_* 实现），
+# 本层的 ethercat.cpp 已接管全部 APPL_* 钩子，对象字典从 digital_ioObjects.h 取。
+if(CONFIG_DUST_COM_ETHERCAT)
+    target_sources(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ethercat.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatslv.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatappl.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatcoe.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/coeappl.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/mailbox.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/objdef.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/sdoserv.c)
+    target_include_directories(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc)
+endif()

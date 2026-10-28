@@ -75,3 +75,11 @@ config DUST_COM_USB
     help
         Enable the C++ USB device CDC ACM stream.
 
+config DUST_COM_ETHERCAT
+    default n
+    bool "EtherCAT slave (Beckhoff SSC 5.13)"
+    help
+        Enable the EtherCAT slave driver in drivers/communication/ethercat.
+        协议栈为倍福 SSC 5.13，属第三方代码，许可声明见
+        drivers/communication/ethercat/ssc/LICENSE-BECKHOFF.md，不受本项目 Apache-2.0 覆盖。
+        端口层（HW_* 宏、ISR、PHY、SII）由各芯片提供，本层不含任何厂商代码。
