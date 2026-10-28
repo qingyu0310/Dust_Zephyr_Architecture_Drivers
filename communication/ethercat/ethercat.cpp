@@ -11,17 +11,25 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
+#include <cstring>
 
 #include "log.hpp"
 
 extern "C" {
 
 #include "applInterface.h"
+#include "ecatappl.h"
+#include "ecatslv.h"
+#include "hpm_ecat_hw.h"
 #include "ecat_zephyr_port.h"
 
-// 让 digital_ioObjects.h 展开对象字典实例 ApplicationObjDic
-#define _OBJD_
+// digital_io.c 不参与编译（APPL_* 钩子由本文件实现），
+// 所以这里接替它定义 _DIGITAL_IO_，让 digital_ioObjects.h 展开对象变量定义
+// （sRxPDOassign / MyMbxData0x2000 等）。
+// 注意不能再定义 _OBJD_：ApplicationObjDic 由 coeappl.c 定义，重复会多重定义。
+#define _DIGITAL_IO_ 1
 #include "digital_io.h"
+#undef _DIGITAL_IO_
 
 }
 
@@ -43,23 +51,54 @@ bool EthercatSlave::Init()
 		return true;
 	}
 
+	shell::Log::SendCommandLine("ecat: get esc device");
 	const struct device *esc = DEVICE_DT_GET(DT_ALIAS(ethercat0));
+
+	shell::Log::SendCommandLine("ecat: wait esc ready");
 	if (!device_is_ready(esc)) {
-		DUST_LOG_ERR("ethercat esc not ready");
+		shell::Log::SendCommandLine("ecat: esc not ready");
 		return false;
 	}
+	shell::Log::SendCommandLine("ecat: esc ready");
 
-	// 先把 PDI/SYNC/RESET 中断回调接到 ESC 设备，再启动协议栈
+	// 照 sample main()：先挂中断回调，再跑硬件初始化
+	shell::Log::SendCommandLine("ecat: irq init");
 	ecat_irq_init();
 
-	// 协议栈内部会调用 HW_Init() 完成 ESC 硬件初始化
+	shell::Log::SendCommandLine("ecat: hw init begin");
+	if (ecat_hardware_init(esc) != 0) {
+		shell::Log::SendCommandLine("ecat: hw init failed");
+		return false;
+	}
+	shell::Log::SendCommandLine("ecat: hw init done");
+
+	shell::Log::SendCommandLine("ecat: MainInit begin");
 	if (MainInit() != 0U) {
-		DUST_LOG_ERR("ethercat MainInit failed");
+		shell::Log::SendCommandLine("ecat: MainInit failed");
+		return false;
+	}
+	shell::Log::SendCommandLine("ecat: MainInit done");
+
+	// MainInit 会清掉 EEPROM 钩子，必须在它之后重新装
+	shell::Log::SendCommandLine("ecat: eeprom hooks");
+	pAPPL_EEPROM_Read = ecat_eeprom_emulation_read;
+	pAPPL_EEPROM_Write = ecat_eeprom_emulation_write;
+	pAPPL_EEPROM_Reload = ecat_eeprom_emulation_reload;
+	pAPPL_EEPROM_Store = ecat_eeprom_emulation_store;
+
+	// 算 PDO 长度（sample 里也是这一步）
+	shell::Log::SendCommandLine("ecat: pdo mapping");
+	if (APPL_GenerateMapping(&nPdInputSize, &nPdOutputSize) != 0U) {
+		shell::Log::SendCommandLine("ecat: pdo mapping failed");
 		return false;
 	}
 
+	ecat_phy_update_link(esc);
+	bRunApplication = TRUE;
+	hpm_esc_start(esc);
+	shell::Log::SendCommandLine("ecat: slave initialised");
+
 	initialised_ = true;
-	DUST_LOG_OK("ethercat slave initialised");
 	return true;
 }
 
@@ -69,12 +108,25 @@ bool EthercatSlave::Init()
 void EthercatSlave::Run()
 {
 	if (!initialised_) {
-		DUST_LOG_ERR("ethercat Run() before Init()");
+		shell::Log::SendCommandLine("ecat: Run before Init");
 		return;
 	}
 
-	for (;;) {
+	const struct device* esc = DEVICE_DT_GET(DT_ALIAS(ethercat0));
+	int64_t next_link_poll = 0;
+
+	while (bRunApplication == TRUE)
+	{
 		MainLoop();
+
+		const int64_t now = k_uptime_get();
+		if (now >= next_link_poll) {
+			ecat_phy_update_link(esc);
+			next_link_poll = now + 100;
+		}
+
+		// 让出 CPU：High 优先级的纯忙循环会饿死启动器和 shell 线程
+		k_usleep(100);
 	}
 }
 
@@ -137,6 +189,11 @@ extern "C" void APPL_InputMapping(uint16_t *pData)
 extern "C" void APPL_Application(void)
 {
 	EthercatSlave::Instance().OnApplication();
+}
+
+extern "C" void ecat_port_log(const char* text)
+{
+	shell::Log::SendCommandLine(text);
 }
 
 extern "C" void APPL_AckErrorInd(uint16_t stateTrans)

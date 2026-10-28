@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <stdint.h>
+#include "hpm_common.h"
 /*-----------------------------------------------------------------------------------------
 ------	
 ------	Slave Sample Code Configuration Defines
