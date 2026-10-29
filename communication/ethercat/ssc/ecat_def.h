@@ -150,7 +150,12 @@ ESC_SUPPORT_ECAT_LED: This switch can be enabled if the connected ESC support Er
 /** 
 ESC_EEPROM_EMULATION: If this switch is set EEPROM emulation is supported. Not all ESC types support EEPROM emulation. See ESC datasheet for more information. */
 #ifndef ESC_EEPROM_EMULATION
-#define ESC_EEPROM_EMULATION                      1 //This define was already evaluated by ET9300 Project Handler(V. 1.5.2.0)!
+/* 由板级 Kconfig 决定：CONFIG_HPM_ESC_EEPROM_EMULATION=y → 固件模拟；否则用板上 I2C EEPROM */
+#if defined(CONFIG_HPM_ESC_EEPROM_EMULATION)
+#define ESC_EEPROM_EMULATION                      1
+#else
+#define ESC_EEPROM_EMULATION                      0
+#endif
 #endif
 
 /** 

@@ -60,12 +60,18 @@ if(CONFIG_DUST_COM_USB)
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream)
 endif()
 
-# EtherCAT 从站（倍福 SSC 5.13 + C++ 封装；端口层由 sdk_glue_user 提供）
+# EtherCAT 从站（倍福 SSC 5.13；分层照 USB：interface / core / appl / 顶层）
 # ssc/digital_io.c 不编译：它是示例 application（含 main 与 APPL_* 实现），
-# 本层的 ethercat.cpp 已接管全部 APPL_* 钩子，对象字典从 digital_ioObjects.h 取。
+# 本层的 appl/ecat_appl_hooks.cpp 已接管全部 APPL_* 钩子，
+# 对象字典从 digital_ioObjects.h 取（由 core/ecat_pdo.cpp 展开定义）。
+# HAL 与 PHY 驱动在子树 zephyr_user/drivers/ethercat/。
 if(CONFIG_DUST_COM_ETHERCAT)
     target_sources(app PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ethercat.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/ecat_pdo.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/ecat_eeprom.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/ecat_stack.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/appl/ecat_appl_hooks.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatslv.c
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatappl.c
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatcoe.c
@@ -75,5 +81,7 @@ if(CONFIG_DUST_COM_ETHERCAT)
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/sdoserv.c)
     target_include_directories(app PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/interface
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc)
 endif()
