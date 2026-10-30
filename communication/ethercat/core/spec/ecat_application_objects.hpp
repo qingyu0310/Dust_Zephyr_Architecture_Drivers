@@ -68,8 +68,6 @@ constexpr uint16_t kModularDeviceProfile = 0xF000;
 // 对象 0x1000 的值：设备类型（DEVICE_PROFILE_TYPE）
 constexpr uint32_t kDeviceProfileType = 0x00001389;
 
-// 过程数据字数：每方向 8 个 32 位量
-constexpr uint8_t kProcessDataWords = 8;
 
 /**
  * @brief 只读的对象结构常量
@@ -268,58 +266,98 @@ constexpr char kName0x1C33[] =
 	"\377";
 
 /**
+ * @brief 过程数据对象的条目描述表
+ *
+ * 子索引 0 是个数项，子索引 1..N 是等宽 32 位元素。
+ *
+ * @tparam N 元素个数
+ */
+template <uint8_t N>
+struct PdoEntryTable
+{
+	EntryDescription items[N + 1];
+};
+
+/**
+ * @brief 按字数生成过程数据条目表
+ * @tparam N 元素个数
+ * @param flags 元素的访问权限位
+ * @return 条目表，第 0 项为个数项
+ */
+template <uint8_t N>
+constexpr PdoEntryTable<N> MakePdoEntryTable(uint16_t flags)
+{
+	PdoEntryTable<N> table {};
+
+	table.items[0] = { DataType::Unsigned8, 0x08, access::kRead };
+
+	for (uint8_t i = 1; i <= N; ++i) {
+		table.items[i] = { DataType::Unsigned32, 0x20, flags };
+	}
+
+	return table;
+}
+
+/**
+ * @brief PDO 映射表
+ *
+ * @tparam N 条目数
+ */
+template <uint8_t N>
+struct PdoMappingTable
+{
+	uint32_t items[N];
+};
+
+/**
+ * @brief 生成 PDO 映射表
+ * @tparam N 条目数
+ * @param index 被映射对象的索引
+ * @return 映射表，第 i 项映射 index:(i+1):32
+ */
+template <uint8_t N>
+constexpr PdoMappingTable<N> MakePdoMappingTable(uint16_t index)
+{
+	PdoMappingTable<N> table {};
+
+	for (uint8_t i = 0; i < N; ++i) {
+		table.items[i] = pdo_mapping::Make(index, static_cast<uint8_t>(i + 1), 32);
+	}
+
+	return table;
+}
+
+/**
  * @brief 0x1600 RxPDO 映射
  *
- * 8 条，每条都是 0x7010:0n:32。
+ * 每条都是 0x7010:0n:32，条目数由 RxPDO 布局决定。
  */
-constexpr EntryDescription kEntry0x1600[] = {
-	{ DataType::Unsigned8,  0x08, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
- { DataType::Unsigned32, 0x20, access::kRead }, };
 constexpr char kName0x1600[] =
 	"OutputCounter process data mapping\0"
 	"SubIndex 001\0"
 	"\377";
-constexpr uint32_t kMapping0x1600[] = {
-	pdo_mapping::Make(0x7010, 1, 32),
-	pdo_mapping::Make(0x7010, 2, 32),
-	pdo_mapping::Make(0x7010, 3, 32),
-	pdo_mapping::Make(0x7010, 4, 32),
-	pdo_mapping::Make(0x7010, 5, 32),
- pdo_mapping::Make(0x7010, 6, 32), pdo_mapping::Make(0x7010, 7, 32), pdo_mapping::Make(0x7010, 8, 32), };
+
+constexpr PdoEntryTable<kProcessOutputWords> kTable0x1600 = MakePdoEntryTable<kProcessOutputWords>(access::kRead);
+constexpr PdoMappingTable<kProcessOutputWords> kMappingTable0x1600 = MakePdoMappingTable<kProcessOutputWords>(0x7010);
+
+constexpr const EntryDescription* kEntry0x1600 = kTable0x1600.items;
+constexpr const uint32_t* kMapping0x1600 = kMappingTable0x1600.items;
 
 /**
  * @brief 0x1A00 TxPDO 映射
  *
- * 8 条，每条都是 0x6000:0n:32。
+ * 每条都是 0x6000:0n:32，条目数由 TxPDO 布局决定。
  */
-constexpr EntryDescription kEntry0x1A00[] = {
-	{ DataType::Unsigned8,  0x08, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
-	{ DataType::Unsigned32, 0x20, access::kRead },
- { DataType::Unsigned32, 0x20, access::kRead }, };
 constexpr char kName0x1A00[] =
 	"InputCounter process data mapping\0"
 	"SubIndex 001\0"
 	"\377";
-constexpr uint32_t kMapping0x1A00[] = {
-	pdo_mapping::Make(0x6000, 1, 32),
-	pdo_mapping::Make(0x6000, 2, 32),
-	pdo_mapping::Make(0x6000, 3, 32),
-	pdo_mapping::Make(0x6000, 4, 32),
-	pdo_mapping::Make(0x6000, 5, 32),
- pdo_mapping::Make(0x6000, 6, 32), pdo_mapping::Make(0x6000, 7, 32), pdo_mapping::Make(0x6000, 8, 32), };
+
+constexpr PdoEntryTable<kProcessInputWords> kTable0x1A00 = MakePdoEntryTable<kProcessInputWords>(access::kRead);
+constexpr PdoMappingTable<kProcessInputWords> kMappingTable0x1A00 = MakePdoMappingTable<kProcessInputWords>(0x6000);
+
+constexpr const EntryDescription* kEntry0x1A00 = kTable0x1A00.items;
+constexpr const uint32_t* kMapping0x1A00 = kMappingTable0x1A00.items;
 
 /**
  * @brief 0x1C12 SM2 分配
@@ -348,19 +386,19 @@ constexpr uint16_t kAssignment0x1C13[] = { 0x1A00 };
  *
  * 可被映射进 TxPDO，只读。
  */
-constexpr EntryDescription kEntry0x6000[] = {
-	{ DataType::Unsigned8,  0x08, access::kRead },
- 	{ DataType::Unsigned32, 0x20, access::kRead | access::kTxPdoMapping }, };
 constexpr char kName0x6000[] = "InputCounter\0\377";
+
+constexpr PdoEntryTable<kProcessInputWords>  kTable0x6000 = MakePdoEntryTable<kProcessInputWords>(access::kRead | access::kTxPdoMapping);
+constexpr PdoEntryTable<kProcessOutputWords> kTable0x7010 = MakePdoEntryTable<kProcessOutputWords>(access::kReadWrite | access::kRxPdoMapping);
+
+constexpr const EntryDescription* kEntry0x6000 = kTable0x6000.items;
+constexpr const EntryDescription* kEntry0x7010 = kTable0x7010.items;
 
 /**
  * @brief 0x7010 输出计数器
  *
  * 可被映射进 RxPDO，可读写。
  */
-constexpr EntryDescription kEntry0x7010[] = {
-	{ DataType::Unsigned8,  0x08, access::kRead },
- 	{ DataType::Unsigned32, 0x20, access::kReadWrite | access::kRxPdoMapping }, };
 constexpr char kName0x7010[] = "OutputCounter\0\377";
 
 /**
@@ -476,10 +514,10 @@ struct ObjectData
 	/**
 	 * @brief 0x6000 / 0x7010 计数器
 	 */
-	uint16_t input_counter_count = kProcessDataWords;
-	uint32_t input_counter[kProcessDataWords] = {};
-	uint16_t output_counter_count = kProcessDataWords;
-	uint32_t output_counter[kProcessDataWords] = {};
+	uint16_t input_counter_count = kProcessInputWords;
+	uint32_t input_counter[kProcessInputWords] = {};
+	uint16_t output_counter_count = kProcessOutputWords;
+	uint32_t output_counter[kProcessOutputWords] = {};
 
 	/**
 	 * @brief 0xF000 模块化设备配置

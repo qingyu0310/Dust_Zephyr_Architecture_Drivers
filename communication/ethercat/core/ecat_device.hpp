@@ -78,11 +78,11 @@ private:
 	bool    ready_ = false;					// 初始化完成
 	bool    cycle_pending_  = false;		// 有待处理的邮箱事件
 
-	static void    OnEscEvent(void* context, EcatEvent event);					// 硬件事件分发入口
-	static AlState QueryState(void* context);									// 字典的状态查询回调
-	static uint64_t QueryTimestamp(void* context);								// 字典的 0x10F8 时间戳回调
-	static uint8_t DispatchMailbox(void* context, struct MailboxFrame* frame);	// 邮箱协议分发
-	static uint8_t SubmitReply(void* context, uint8_t* data, uint16_t length);	// SDO 应答提交
+	static void     OnEscEvent(void* context, EcatEvent event);						// 硬件事件分发入口
+	static AlState  QueryState(void* context);										// 字典的状态查询回调
+	static uint64_t QueryTimestamp(void* context);									// 字典的 0x10F8 时间戳回调
+	static uint8_t  DispatchMailbox(void* context, struct MailboxFrame* frame);		// 邮箱协议分发
+	static uint8_t  SubmitReply(void* context, uint8_t* data, uint16_t length);		// SDO 应答提交
 
 	void HandleAlEvents(uint16_t events);	// 处理 0x0220 的各个事件位（线程上下文，完整流程）
 	void HandlePdiEvents(uint16_t events);	// 处理过程数据相关事件（ISR 与线程共用）

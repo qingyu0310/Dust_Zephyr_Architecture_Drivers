@@ -55,8 +55,8 @@ bool PhyRtl8201f::Init(EcatEsc& esc, const PhyConfig& cfg)
 	cfg_ = cfg;
 	mdio_.Bind(esc, cfg.mdio_address);
 
-	uint16_t id1 = 0U;
-	uint16_t id2 = 0U;
+	uint16_t id1  = 0U;
+	uint16_t id2  = 0U;
 	uint16_t anar = 0U;
 
 	if (!mdio_.ReadId(&id1, &id2)) {
@@ -134,7 +134,7 @@ bool PhyRtl8201f::LinkUp(EcatEsc& esc, bool& up)
 {
 	(void)esc;
 
-	uint16_t status = 0U;
+	uint16_t status  = 0U;
 	uint16_t control = 0U;
 
 	up = false;

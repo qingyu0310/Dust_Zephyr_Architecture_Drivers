@@ -2,13 +2,11 @@
  * @file ethercat.cpp
  * @author qingyu
  * @brief EtherCAT 从站业务入口实现
- * @version 1.2
+ * @version 1.3
  * @date 2026-10-31
  *
- * 门面不实现协议，也不碰任何具体板卡：ESC 与 PHY 都由调用方构造后注入，
- * 这里只持有抽象指针，链路轮询在这里按 kLinkPollMs 推进。
- *
  * @copyright Copyright (c) 2026
+ *
  */
 
 #include "ethercat.hpp"
@@ -21,6 +19,12 @@
 
 namespace ecat {
 
+/**
+ * @brief 初始化协议栈与硬件
+ * @param esc  ESC 硬件
+ * @param phys 两个端口的 PHY，按端口顺序
+ * @return true=成功
+ */
 bool EthercatSlave::Init(EcatEsc& esc, EcatPhy* const* phys)
 {
 	// ESC 由协议栈内部 Open（带事件回调），之后 MDIO 通道才可用
@@ -37,7 +41,7 @@ bool EthercatSlave::Init(EcatEsc& esc, EcatPhy* const* phys)
 	cfg.advertise = 0x0100;
 	cfg.autoneg   = true;
 
-	for (uint8_t port = 0; port < 2; ++port)
+	for (uint8_t port = 0; port < kPortCount; ++port)
 	{
 		phys_[port] = phys[port];
 
@@ -57,6 +61,10 @@ bool EthercatSlave::Init(EcatEsc& esc, EcatPhy* const* phys)
 	return true;
 }
 
+/**
+ * @brief 推一拍（单拍，立刻返回）
+ * @return true=仍在运行
+ */
 bool EthercatSlave::Poll()
 {
 	const int64_t now = k_uptime_get();
@@ -67,12 +75,9 @@ bool EthercatSlave::Poll()
 		{
 			bool up = false;
 
-			if (phys_[port]->LinkUp(*esc_, up)) 
-			{
+			if (phys_[port]->LinkUp(*esc_, up)) {
 				esc_->SetLinkState(port, up);
-			} 
-			else 
-			{
+			} else {
 				esc_->SetLinkState(port, false);
 			}
 		}
@@ -80,21 +85,6 @@ bool EthercatSlave::Poll()
 	}
 
 	return device_.Poll();
-}
-
-void EthercatSlave::Disable()
-{
-	device_.Disable();
-}
-
-void EthercatSlave::SetOutputSink(EcatDevice::OutputSink handler, void* context)
-{
-	device_.SetOutputSink(handler, context);
-}
-
-void EthercatSlave::SetInputSource(EcatDevice::InputSource provider, void* context)
-{
-	device_.SetInputSource(provider, context);
 }
 
 }

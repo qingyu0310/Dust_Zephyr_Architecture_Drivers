@@ -56,16 +56,16 @@ constexpr uint16_t kOffsets0x1C00[] = {
 };
 
 constexpr uint16_t kOffsets0x1C32[] = {
-	offsetof(ObjectData, sync_manager_out.sub_count),
-	offsetof(ObjectData, sync_manager_out.sync_type),
-	offsetof(ObjectData, sync_manager_out.cycle_time),
-	offsetof(ObjectData, sync_manager_out.sub003_reserved),
-	offsetof(ObjectData, sync_manager_out.sync_types_supported),
-	offsetof(ObjectData, sync_manager_out.min_cycle_time),
-	offsetof(ObjectData, sync_manager_out.calc_and_copy_time),
-	offsetof(ObjectData, sync_manager_out.sub007_reserved),
-	offsetof(ObjectData, sync_manager_out.get_cycle_time),
-	offsetof(ObjectData, sync_manager_out.delay_time),
+	 offsetof(ObjectData, sync_manager_out.sub_count),
+	 offsetof(ObjectData, sync_manager_out.sync_type),
+	 offsetof(ObjectData, sync_manager_out.cycle_time),
+	 offsetof(ObjectData, sync_manager_out.sub003_reserved),
+	 offsetof(ObjectData, sync_manager_out.sync_types_supported),
+	 offsetof(ObjectData, sync_manager_out.min_cycle_time),
+	 offsetof(ObjectData, sync_manager_out.calc_and_copy_time),
+	 offsetof(ObjectData, sync_manager_out.sub007_reserved),
+	 offsetof(ObjectData, sync_manager_out.get_cycle_time),
+	 offsetof(ObjectData, sync_manager_out.delay_time),
 	offsetof(ObjectData, sync_manager_out.sync0_cycle_time),
 	offsetof(ObjectData, sync_manager_out.sm_event_missed),
 	offsetof(ObjectData, sync_manager_out.cycle_exceeded),
@@ -92,16 +92,16 @@ constexpr uint16_t kOffsets0x1C32[] = {
 };
 
 constexpr uint16_t kOffsets0x1C33[] = {
-	offsetof(ObjectData, sync_manager_in.sub_count),
-	offsetof(ObjectData, sync_manager_in.sync_type),
-	offsetof(ObjectData, sync_manager_in.cycle_time),
-	offsetof(ObjectData, sync_manager_in.sub003_reserved),
-	offsetof(ObjectData, sync_manager_in.sync_types_supported),
-	offsetof(ObjectData, sync_manager_in.min_cycle_time),
-	offsetof(ObjectData, sync_manager_in.calc_and_copy_time),
-	offsetof(ObjectData, sync_manager_in.sub007_reserved),
-	offsetof(ObjectData, sync_manager_in.get_cycle_time),
-	offsetof(ObjectData, sync_manager_in.delay_time),
+	 offsetof(ObjectData, sync_manager_in.sub_count),
+	 offsetof(ObjectData, sync_manager_in.sync_type),
+	 offsetof(ObjectData, sync_manager_in.cycle_time),
+	 offsetof(ObjectData, sync_manager_in.sub003_reserved),
+	 offsetof(ObjectData, sync_manager_in.sync_types_supported),
+	 offsetof(ObjectData, sync_manager_in.min_cycle_time),
+	 offsetof(ObjectData, sync_manager_in.calc_and_copy_time),
+	 offsetof(ObjectData, sync_manager_in.sub007_reserved),
+	 offsetof(ObjectData, sync_manager_in.get_cycle_time),
+	 offsetof(ObjectData, sync_manager_in.delay_time),
 	offsetof(ObjectData, sync_manager_in.sync0_cycle_time),
 	offsetof(ObjectData, sync_manager_in.sm_event_missed),
 	offsetof(ObjectData, sync_manager_in.cycle_exceeded),
@@ -127,29 +127,43 @@ constexpr uint16_t kOffsets0x1C33[] = {
 	offsetof(ObjectData, sync_manager_in.sync_error),
 };
 
-constexpr uint16_t kOffsets0x6000[] = {
-	offsetof(ObjectData, input_counter_count),
-	offsetof(ObjectData, input_counter) + 0,
-	offsetof(ObjectData, input_counter) + 4,
-	offsetof(ObjectData, input_counter) + 8,
-	offsetof(ObjectData, input_counter) + 12,
-	offsetof(ObjectData, input_counter) + 16,
-	offsetof(ObjectData, input_counter) + 20,
-	offsetof(ObjectData, input_counter) + 24,
-	offsetof(ObjectData, input_counter) + 28,
+/**
+ * @brief 过程数据对象的成员偏移表
+ *
+ * @tparam N 元素个数
+ */
+template <uint8_t N>
+struct PdoOffsetTable
+{
+	uint16_t items[N + 1];
 };
 
-constexpr uint16_t kOffsets0x7010[] = {
-	offsetof(ObjectData, output_counter_count),
-	offsetof(ObjectData, output_counter) + 0,
-	offsetof(ObjectData, output_counter) + 4,
-	offsetof(ObjectData, output_counter) + 8,
-	offsetof(ObjectData, output_counter) + 12,
-	offsetof(ObjectData, output_counter) + 16,
-	offsetof(ObjectData, output_counter) + 20,
-	offsetof(ObjectData, output_counter) + 24,
-	offsetof(ObjectData, output_counter) + 28,
-};
+/**
+ * @brief 按字数生成过程数据成员偏移表
+ * @tparam N 元素个数
+ * @param count_offset 个数项的偏移
+ * @param array_offset 数组首元素的偏移
+ * @return 偏移表，下标 = 子索引
+ */
+template <uint8_t N>
+constexpr PdoOffsetTable<N> MakePdoOffsets(uint16_t count_offset, uint16_t array_offset)
+{
+	PdoOffsetTable<N> table {};
+
+	table.items[0] = count_offset;
+
+	for (uint8_t i = 0; i < N; ++i) {
+		table.items[i + 1] = static_cast<uint16_t>(array_offset + i * sizeof(uint32_t));
+	}
+
+	return table;
+}
+
+constexpr PdoOffsetTable<kProcessInputWords>  kTable0x6000 = MakePdoOffsets<kProcessInputWords> (offsetof(ObjectData, input_counter_count),  offsetof(ObjectData, input_counter));
+constexpr PdoOffsetTable<kProcessOutputWords> kTable0x7010 = MakePdoOffsets<kProcessOutputWords>(offsetof(ObjectData, output_counter_count), offsetof(ObjectData, output_counter));
+
+constexpr const uint16_t* kOffsets0x6000 = kTable0x6000.items;
+constexpr const uint16_t* kOffsets0x7010 = kTable0x7010.items;
 
 constexpr uint16_t kOffsets0xF000[] = {
 	offsetof(ObjectData, modular_device_sub_count),
@@ -210,10 +224,10 @@ constexpr ObjectSlot kSlots[] = {
 	{index::kMailboxData, 		ObjectCode::Variable, 0, 	schema::kEntry0x2000, 	schema::kName0x2000,
 	  offsetof(ObjectData, mailbox_data), 			DataKind::Member, nullptr, nullptr, nullptr, nullptr },
 
-	{index::kInputCounter, 		ObjectCode::Array, 	kProcessDataWords, 	schema::kEntry0x6000, 	schema::kName0x6000,
+	{index::kInputCounter, 		ObjectCode::Array, 	kProcessInputWords, 	schema::kEntry0x6000, 	schema::kName0x6000,
 	  offsetof(ObjectData, input_counter_count), 	DataKind::Member, nullptr, nullptr, nullptr, kOffsets0x6000 },
 
-	{index::kOutputCounter, 	ObjectCode::Array, kProcessDataWords, schema::kEntry0x7010, schema::kName0x7010,
+	{index::kOutputCounter, 	ObjectCode::Array, kProcessOutputWords, schema::kEntry0x7010, schema::kName0x7010,
 	  offsetof(ObjectData, output_counter_count), 	DataKind::Member, nullptr, nullptr, nullptr, kOffsets0x7010 },
 
 	{index::kModularDeviceProfile, ObjectCode::Record, 2, schema::kEntry0xF000, schema::kName0xF000,
@@ -225,18 +239,6 @@ constexpr uint16_t kSlotCount = sizeof(kSlots) / sizeof(kSlots[0]);
 static_assert(kSlotCount == kObjectCount, "对象表项数与 kObjectCount 不一致");
 
 constexpr uint8_t kArrayDescriptionCount = 2;	// 数组/记录的条目描述只有两条（子索引 0 + 1..n 共用）
-
-/**
- * @brief 按位偏移取字节偏移
- *
- * SSC 的 OBJ_GetEntryOffset 返回位偏移，调用方再 >>4 转成 UINT16* 步进。
- * 这里统一在字典内部算，调用方拿字节地址。
- *
- * @param code       对象代码
- * @param entries    子条目描述表
- * @param sub_index  子索引
- * @return 相对于对象数据起点的字节偏移
- */
 
 }
 
@@ -269,7 +271,8 @@ void EcatDictionary::BindTimestamp(TimestampSource source, void* context)
  */
 const ObjectSlot* EcatDictionary::Find(uint16_t target) const
 {
-	for (uint16_t i = 0; i < kSlotCount; ++i) {
+	for (uint16_t i = 0; i < kSlotCount; ++i) 
+	{
 		if (kSlots[i].index == target) {
 			return &kSlots[i];
 		}
@@ -358,7 +361,9 @@ void* EcatDictionary::DataOf(const ObjectSlot& slot, uint8_t sub_index) const
  */
 uint32_t EcatDictionary::MappingEntryOf(DataKind kind, uint8_t sub_index)
 {
-	if (sub_index == 0 || sub_index > kProcessDataWords) {
+	const uint8_t words = (kind == DataKind::RxPdoMapping) ? kProcessOutputWords : kProcessInputWords;
+
+	if (sub_index == 0 || sub_index > words) {
 		return 0;
 	}
 
@@ -470,8 +475,10 @@ uint16_t EcatDictionary::SubCountOf(const ObjectSlot& slot) const
 	switch (slot.kind)
 	{
 		case DataKind::RxPdoMapping:
+			return kProcessOutputWords;
+
 		case DataKind::TxPdoMapping:
-			return kProcessDataWords;
+			return kProcessInputWords;
 
 		case DataKind::RxPdoAssignment:
 		case DataKind::TxPdoAssignment:
@@ -598,7 +605,7 @@ uint32_t EcatDictionary::Read(uint16_t target, uint8_t sub_index, bool complete_
 				case DataKind::TxPdoMapping:
 				{
 					if (sub_index == 0) {
-						destination[0] = kProcessDataWords;
+						destination[0] = static_cast<uint8_t>(SubCountOf(*slot));
 						*written = 1;
 						return 0;
 					}

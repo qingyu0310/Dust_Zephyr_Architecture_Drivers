@@ -41,7 +41,9 @@ uint16_t SumMappingBits(DataKind assignment_kind, DataKind mapping_kind, uint32_
 		return al_status::kInvalidOutputMapping;
 	}
 
-	for (uint8_t sub = 1; sub <= kProcessDataWords; ++sub) {
+	const uint8_t words = (mapping_kind == DataKind::RxPdoMapping) ? kProcessOutputWords : kProcessInputWords;
+
+	for (uint8_t sub = 1; sub <= words; ++sub) {
 		const uint32_t mapping = EcatDictionary::MappingEntryOf(mapping_kind, sub);
 
 		if (mapping == 0) {

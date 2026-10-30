@@ -12,11 +12,13 @@
 
 #include <cstdint>
 
+#include "spec/ecat_pdo_layout.hpp"
+
 namespace ecat {
 
 /* 过程数据容量（每方向），容量上限不是实际有效长度——实际长度由 0x1C12/0x1C13 算出 */
-constexpr uint16_t kMaxProcessInputSize  = 0x40;	// 从站→主站（SM3 / TxPDO）容量
-constexpr uint16_t kMaxProcessOutputSize = 0x40;	// 主站→从站（SM2 / RxPDO）容量
+constexpr uint16_t kMaxProcessInputSize  = static_cast<uint16_t>(kProcessInputWords * sizeof(uint32_t));	// 从站→主站（SM3 / TxPDO）容量
+constexpr uint16_t kMaxProcessOutputSize = static_cast<uint16_t>(kProcessOutputWords * sizeof(uint32_t));	// 主站→从站（SM2 / RxPDO）容量
 
 /* 邮箱尺寸：SM0 按最小尺寸、SM1 按最大尺寸，这个不对称是 SSC 的既有行为 */
 constexpr uint16_t kMinMailboxSize = 0x0024;		// SM0 接收邮箱尺寸
@@ -31,6 +33,7 @@ constexpr uint16_t kMailboxQueueDepth = 10;					// 邮箱报文队列深度
 /* 同时存活的缓冲：写/读/重发/存储各 1 + 收发两个队列 */
 constexpr uint16_t kMailboxBufferCount = 4 + 2 * kMailboxQueueDepth;		// 静态池容量
 
+constexpr uint8_t kPortCount = 2;				// ESC 物理端口数（PHY 与链路状态按端口索引）
 constexpr uint8_t kMaxSyncManagerCount = 16;	// ESC 支持的 SM 通道上限
 constexpr uint8_t kSyncManagerRegSize  = 8;	// 每个 SM 占 8 B 配置/状态寄存器
 
