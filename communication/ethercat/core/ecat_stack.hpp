@@ -45,9 +45,14 @@ public:
 	bool Init();
 
 	/**
-	 * @brief 主循环（阻塞，直到 Stop 或 bRunApplication 被清）
+	 * @brief 推一拍协议栈：跑一次 MainLoop + 到期就刷新链路
+	 *
+	 * 单拍，立刻返回。循环节拍由 Thread 外壳的周期参数控制。
+	 * 业务 Task() 每拍调一次，不要写成 while 死循环。
+	 *
+	 * @return true=协议栈仍在运行；false=已停止
 	 */
-	void Run();
+	bool Poll();
 
 	/**
 	 * @brief 请求停止
@@ -77,5 +82,6 @@ private:
 	CycleHandler cycle_handler_ {};
 	RxHandler    rx_handler_ {};
 	TxProvider   tx_handler_ {};
+	int64_t      next_link_poll_ = 0;       // 下次刷新链路的时刻（ms）
 	bool         initialised_ = false;
 };

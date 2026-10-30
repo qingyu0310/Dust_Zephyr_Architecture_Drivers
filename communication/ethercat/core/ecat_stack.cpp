@@ -2,8 +2,8 @@
  * @file ecat_stack.cpp
  * @author qingyu
  * @brief EtherCAT 从站协议栈实现
- * @version 0.1
- * @date 2026-10-29
+ * @version 0.3
+ * @date 2026-10-30
  *
  * framework 里唯一 include SSC 生命周期头的地方（appl/ 除外）。
  *
@@ -30,9 +30,6 @@ namespace
 {
 	/** 链路刷新周期（ms） */
 	constexpr int64_t kLinkPollMs = 100;
-
-	/** 主循环让出 CPU 的间隔（us） */
-	constexpr uint32_t kIdleSleepUs = 100;
 }
 
 EcatStack& EcatStack::Instance()
@@ -87,29 +84,66 @@ bool EcatStack::Init()
 }
 
 /**
- * @brief 主循环（阻塞）
+ * @brief 推一拍协议栈（单拍，立刻返回）
+ *
+ * 循环节拍交给 Thread 外壳，任务体不许自己 while。
+ *
+ * @return true=仍在运行；false=已停止
  */
-void EcatStack::Run()
+bool EcatStack::Poll()
 {
 	if (!initialised_) {
-		DUST_LOG_ERR("ecat: Run before Init");
-		return;
+		DUST_LOG_ERR("ecat: Poll before Init");
+		return false;
+	}
+	if (bRunApplication != TRUE) {
+		return false;
 	}
 
-	int64_t next_link_poll = 0;
+	MainLoop();
 
-	while (bRunApplication == TRUE) {
-		MainLoop();
+	const int64_t now = k_uptime_get();
+	static int64_t next_diag = 0;
+	if (now >= next_diag) {
+		next_diag = now + 500;
 
-		const int64_t now = k_uptime_get();
-		if (now >= next_link_poll) {
-			hal_.UpdateLink();
-			next_link_poll = now + kLinkPollMs;
-		}
+		// 同一临界区保存状态机变量，恢复中断后再打印。
+		const unsigned int key = irq_lock();
+		const unsigned state = nAlStatus;
+		const unsigned trans = nEcatStateTrans;
+		const unsigned wait = bEcatWaitForAlControlRes;
+		const unsigned pending = bApplEsmPending;
+		const int timeout = EsmTimeoutCounter;
+		const unsigned first = bEcatFirstOutputsReceived;
+		const unsigned esc_int = bEscIntEnabled;
+		const unsigned dc = bDcSyncActive;
+		const unsigned output = bEcatOutputUpdateRunning;
+		const unsigned wd_ms = EcatWdValue;
+		irq_unlock(key);
 
-		/* 让出 CPU：High 优先级的纯忙循环会饿死启动器和 shell 线程 */
-		k_usleep(kIdleSleepUs);
+		// 只读状态寄存器，不读取会确认状态请求的 AL Control。
+		uint32_t al_status = 0;
+		uint32_t al_code = 0;
+		uint32_t wd_status = 0;
+		hal_.Read(0x0130, &al_status, sizeof(al_status));
+		hal_.Read(0x0134, &al_code, sizeof(al_code));
+		hal_.Read(0x0440, &wd_status, sizeof(wd_status));
+		DUST_LOG_INF("ecat esm: state=%02x trans=%02x wait=%u pending=%u",
+			state, trans, wait, pending);
+		DUST_LOG_INF("ecat gate: first=%u irq=%u dc=%u out=%u",
+			first, esc_int, dc, output);
+		DUST_LOG_INF("ecat watchdog: timeout=%d wd_ms=%u wd=%08x",
+			timeout, wd_ms,
+			static_cast<unsigned>(wd_status));
+		DUST_LOG_INF("ecat status: al=%04x code=%04x",
+			static_cast<unsigned>(al_status & 0xFFFFU),
+			static_cast<unsigned>(al_code & 0xFFFFU));
 	}
+	if (now >= next_link_poll_) {
+		hal_.UpdateLink();
+		next_link_poll_ = now + kLinkPollMs;
+	}
+	return true;
 }
 
 /**

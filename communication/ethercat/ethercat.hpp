@@ -60,8 +60,6 @@
 
 #pragma once
 
-#include <stdint.h>
-
 #include "core/ecat_stack.hpp"
 #include "interface/ecat_types.hpp"
 
@@ -87,9 +85,14 @@ public:
 	bool Init();
 
 	/**
-	 * @brief 运行主循环（阻塞，直到 Stop）
+	 * @brief 推一拍协议栈（单拍，立刻返回）
+	 *
+	 * 业务 Task() 每拍调一次。循环节拍由 Thread 外壳控制，
+	 * 任务体不许写 while 死循环——那样线程框架的统计和故障策略全部失效。
+	 *
+	 * @return true=仍在运行；false=已停止
 	 */
-	void Run();
+	bool Poll();
 
 	/**
 	 * @brief 请求停止

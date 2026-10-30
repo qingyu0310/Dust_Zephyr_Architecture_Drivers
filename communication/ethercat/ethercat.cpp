@@ -31,11 +31,12 @@ bool EthercatSlave::Init()
 }
 
 /**
- * @brief 运行主循环（阻塞）
+ * @brief 推一拍协议栈（单拍，立刻返回）
+ * @return true=仍在运行；false=已停止
  */
-void EthercatSlave::Run()
+bool EthercatSlave::Poll()
 {
-	stack_.Run();
+	return stack_.Poll();
 }
 
 /**
