@@ -60,28 +60,59 @@ if(CONFIG_DUST_COM_USB)
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream)
 endif()
 
-# EtherCAT 从站（倍福 SSC 5.13；分层照 USB：interface / core / appl / 顶层）
-# ssc/digital_io.c 不编译：它是示例 application（含 main 与 APPL_* 实现），
-# 本层的 appl/ecat_appl_hooks.cpp 已接管全部 APPL_* 钩子，
-# 对象字典从 digital_ioObjects.h 取（由 core/ecat_pdo.cpp 展开定义）。
-# HAL 与 PHY 驱动在子树 zephyr_user/drivers/ethercat/。
+# EtherCAT 从站（C++ 实现）
+#
+# core/ 按职责分四层：
+#   spec/     纯数据与常量，无状态（limits / registers / wire / object / application_objects）
+#   model/    对象模型（dictionary）
+#   pdo/      过程数据域（process_data）
+#   mailbox/  邮箱链路（mailbox / sdo / sdo_info / coe / sii_service）
+#   al/       状态机与时基（state_machine / sync / sm）
+#   core/     组合根（device）
 if(CONFIG_DUST_COM_ETHERCAT)
     target_sources(app PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ethercat.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/ecat_pdo.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/ecat_eeprom.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/ecat_stack.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/appl/ecat_appl_hooks.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatslv.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatappl.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/ecatcoe.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/coeappl.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/mailbox.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/objdef.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc/sdoserv.c)
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/model/ecat_dictionary.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/pdo/ecat_process_data.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_mailbox.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_sdo.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_sdo_info.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_coe.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_sii_service.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/al/ecat_state_machine.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/al/ecat_sync.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/al/ecat_sm.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/ecat_device.cpp)
+
     target_include_directories(app PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/interface
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ssc)
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/interface)
+endif()
+
+# EtherCAT PHY 设备模块（与 gpio/pwm 同层）
+#
+# 三颗芯片共用 ecat_phy_mdio.cpp，所以公共部分单独一个块，
+# 避免多个门禁同时打开时同一源文件被重复加入 app target。
+if(CONFIG_DUST_DEV_ECAT_PHY_JL1111 OR CONFIG_DUST_DEV_ECAT_PHY_RTL8201F OR CONFIG_DUST_DEV_ECAT_PHY_TJA1101B)
+    target_sources(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/device/ecat_phy/ecat_phy_mdio.cpp)
+    target_include_directories(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/device/ecat_phy
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/interface)
+endif()
+
+if(CONFIG_DUST_DEV_ECAT_PHY_JL1111)
+    target_sources(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/device/ecat_phy/jl1111/phy_jl1111.cpp)
+endif()
+
+if(CONFIG_DUST_DEV_ECAT_PHY_RTL8201F)
+    target_sources(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/device/ecat_phy/rtl8201f/phy_rtl8201f.cpp)
+endif()
+
+if(CONFIG_DUST_DEV_ECAT_PHY_TJA1101B)
+    target_sources(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/device/ecat_phy/tja1101b/phy_tja1101b.cpp)
 endif()

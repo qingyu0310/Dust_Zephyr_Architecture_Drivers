@@ -23,6 +23,25 @@ config DUST_DEV_PWM
     help
         Enable the lightweight PWM wrapper in drivers/device/pwm.
 
+config DUST_DEV_ECAT_PHY_JL1111
+    default n
+    bool "JL1111 EtherCAT PHY"
+    help
+        JL1111 100BASE-TX PHY（HPM6E00EVK 的 PORTA/PORTB）。
+        由业务线程（trd）按板卡组装时选用，不按 dts 自动选中。
+
+config DUST_DEV_ECAT_PHY_RTL8201F
+    default n
+    bool "RTL8201F EtherCAT PHY"
+    help
+        RTL8201F 100BASE-TX PHY（HPM5E31 自定义板的 PORTA）。
+
+config DUST_DEV_ECAT_PHY_TJA1101B
+    default n
+    bool "TJA1101B EtherCAT PHY"
+    help
+        TJA1101B 100BASE-T1 PHY（HPM5E31 自定义板的 PORTB）。
+
 config DUST_COM_UART
     default n
     bool "UART interrupt driver"
@@ -77,9 +96,10 @@ config DUST_COM_USB
 
 config DUST_COM_ETHERCAT
     default n
-    bool "EtherCAT slave (Beckhoff SSC 5.13)"
+    bool "EtherCAT slave"
     help
         Enable the EtherCAT slave driver in drivers/communication/ethercat.
-        协议栈为倍福 SSC 5.13，属第三方代码，许可声明见
-        drivers/communication/ethercat/ssc/LICENSE-BECKHOFF.md，不受本项目 Apache-2.0 覆盖。
-        端口层（HW_* 宏、ISR、PHY、SII）由各芯片提供，本层不含任何厂商代码。
+        C++ 实现，行为派生自倍福 SSC 5.13；派生范围与来源见
+        drivers/communication/ethercat/core/LICENSE-BECKHOFF.md，
+        该部分不受本项目 Apache-2.0 覆盖。
+        硬件实现（ESC 寄存器、IRQ、PHY、SII）由各芯片提供，本层不含任何厂商代码。
