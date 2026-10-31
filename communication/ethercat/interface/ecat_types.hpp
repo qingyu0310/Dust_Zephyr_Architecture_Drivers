@@ -23,11 +23,11 @@
  */
 enum class AlState : uint8_t
 {
-	Init   = 0x01,                          // 初始化
-	PreOp  = 0x02,                          // 预运行（邮箱可用）
-	SafeOp = 0x04,                          // 安全运行（输入有效）
-	Op     = 0x08,                          // 运行（输入输出都有效）
-	Boot   = 0x03,                          // 引导（固件升级）
+	Init   = 0x01,                          	// 初始化
+	PreOp  = 0x02,                          	// 预运行（邮箱可用）
+	SafeOp = 0x04,                          	// 安全运行（输入有效）
+	Op     = 0x08,                          	// 运行（输入输出都有效）
+	Boot   = 0x03,                          	// 引导（固件升级）
 };
 
 /**
@@ -37,9 +37,9 @@ enum class AlState : uint8_t
  */
 namespace al_control {
 
-constexpr uint8_t kStateMask        = 0x0F; // 目标状态掩码
-constexpr uint8_t kErrorAck         = 0x10; // 主站确认错误位
-constexpr uint8_t kDeviceIdRequest  = 0x20; // 请求显式设备 ID（0x0120 位 5）
+constexpr uint8_t kStateMask        = 0x0F; 	// 目标状态掩码
+constexpr uint8_t kErrorAck         = 0x10; 	// 主站确认错误位
+constexpr uint8_t kDeviceIdRequest  = 0x20; 	// 请求显式设备 ID（0x0120 位 5）
 
 }
 
@@ -93,11 +93,11 @@ constexpr uint16_t kAlStatusInWork = 0x00FF;
  */
 enum class EcatEvent : uint8_t
 {
-	Pdi    = 0,                             // PDI 中断（AL/邮箱/过程数据/EEPROM 命令）
-	Sync0  = 1,                             // 分布式时钟 SYNC0
-	Sync1  = 2,                             // 分布式时钟 SYNC1
-	Reset  = 3,                             // ESC 复位
-	Tick1ms = 4,                            // 1 ms 定时事件（无硬件中断，由定时器产生）
+	Pdi    = 0,                             		// PDI 中断（AL/邮箱/过程数据/EEPROM 命令）
+	Sync0  = 1,                             		// 分布式时钟 SYNC0
+	Sync1  = 2,                             		// 分布式时钟 SYNC1
+	Reset  = 3,                             		// ESC 复位
+	Tick1ms = 4,                            		// 1 ms 定时事件（无硬件中断，由定时器产生）
 };
 
 /**
@@ -109,25 +109,29 @@ using EcatIrq = EcatEvent;
  * @brief AL Event Request 寄存器（0x0220）的位掩码
  */
 namespace al_event {
-constexpr uint16_t kAlControl       = 0x0001; // AL Control 事件
-constexpr uint16_t kSync0           = 0x0004; // SYNC0 事件
-constexpr uint16_t kSync1           = 0x0008; // SYNC1 事件
-constexpr uint16_t kSmChange        = 0x0010; // 同步管理器变化
-constexpr uint16_t kEepromCommand   = 0x0020; // EEPROM 命令待处理
-constexpr uint16_t kMailboxWrite    = 0x0100; // 邮箱写事件（主站→从站）
-constexpr uint16_t kMailboxRead     = 0x0200; // 邮箱读事件（从站→主站）
-constexpr uint16_t kProcessOutput   = 0x0400; // 过程数据输出写入事件
-constexpr uint16_t kProcessInput    = 0x0800; // 过程数据输入读取事件
+
+constexpr uint16_t kAlControl       = 0x0001; 		// AL Control 事件
+constexpr uint16_t kSync0           = 0x0004; 		// SYNC0 事件
+constexpr uint16_t kSync1           = 0x0008; 		// SYNC1 事件
+constexpr uint16_t kSmChange        = 0x0010; 		// 同步管理器变化
+constexpr uint16_t kEepromCommand   = 0x0020; 		// EEPROM 命令待处理
+constexpr uint16_t kMailboxWrite    = 0x0100; 		// 邮箱写事件（主站→从站）
+constexpr uint16_t kMailboxRead     = 0x0200; 		// 邮箱读事件（从站→主站）
+constexpr uint16_t kProcessOutput   = 0x0400; 		// 过程数据输出写入事件
+constexpr uint16_t kProcessInput    = 0x0800; 		// 过程数据输入读取事件
+
 }
 
 /**
  * @brief 同步管理器通道编号
  */
 namespace sync_manager {
-constexpr uint8_t kMailboxOut = 0;      // SM0：邮箱写（主站→从站）
-constexpr uint8_t kMailboxIn  = 1;      // SM1：邮箱读（从站→主站）
-constexpr uint8_t kProcessOut = 2;      // SM2：过程数据输出（主站→从站）
-constexpr uint8_t kProcessIn  = 3;      // SM3：过程数据输入（从站→主站）
+
+constexpr uint8_t kMailboxOut = 0;      			// SM0：邮箱写（主站→从站）
+constexpr uint8_t kMailboxIn  = 1;      			// SM1：邮箱读（从站→主站）
+constexpr uint8_t kProcessOut = 2;      			// SM2：过程数据输出（主站→从站）
+constexpr uint8_t kProcessIn  = 3;      			// SM3：过程数据输入（从站→主站）
+
 }
 
 /**
@@ -135,11 +139,11 @@ constexpr uint8_t kProcessIn  = 3;      // SM3：过程数据输入（从站→�
  */
 enum class SyncType : uint16_t
 {
-	FreeRun        = 0x0000,                // 自由运行
-	SmSynchron     = 0x0001,                // 同步到对应同步管理器的 SM 事件
-	DcSync0        = 0x0002,                // 同步到 SYNC0
-	DcSync1        = 0x0003,                // 同步到 SYNC1
-	Sm2Synchron    = 0x0022,                // 同步到 SM2 事件（仅 0x1C33:01 合法）
+	FreeRun        = 0x0000,                		// 自由运行
+	SmSynchron     = 0x0001,                		// 同步到对应同步管理器的 SM 事件
+	DcSync0        = 0x0002,                		// 同步到 SYNC0
+	DcSync1        = 0x0003,                		// 同步到 SYNC1
+	Sm2Synchron    = 0x0022,                		// 同步到 SM2 事件（仅 0x1C33:01 合法）
 };
 
 /**
@@ -147,13 +151,13 @@ enum class SyncType : uint16_t
  */
 enum class MailboxProtocol : uint8_t
 {
-	None = 0,                               // 未指定
-	AoE  = 1,                               // ADS over EtherCAT
-	EoE  = 2,                               // Ethernet over EtherCAT
-	CoE  = 3,                               // CANopen over EtherCAT
-	FoE  = 4,                               // File over EtherCAT
-	SoE  = 5,                               // Servo over EtherCAT
-	VoE  = 15,                              // Vendor over EtherCAT
+	None = 0,                               		// 未指定
+	AoE  = 1,                               		// ADS over EtherCAT
+	EoE  = 2,                               		// Ethernet over EtherCAT
+	CoE  = 3,                               		// CANopen over EtherCAT
+	FoE  = 4,                               		// File over EtherCAT
+	SoE  = 5,                               		// Servo over EtherCAT
+	VoE  = 15,                              		// Vendor over EtherCAT
 };
 
 /**
@@ -161,9 +165,9 @@ enum class MailboxProtocol : uint8_t
  */
 enum class EcatPhySpeed : uint8_t
 {
-	Mbps10   = 0,                           // 10 Mbit/s
-	Mbps100  = 1,                           // 100 Mbit/s
-	Mbps1000 = 2,                           // 1000 Mbit/s
+	Mbps10   = 0,                           		// 10 Mbit/s
+	Mbps100  = 1,                           		// 100 Mbit/s
+	Mbps1000 = 2,                           		// 1000 Mbit/s
 };
 
 /**
@@ -171,8 +175,8 @@ enum class EcatPhySpeed : uint8_t
  */
 struct PdoLayout
 {
-	uint16_t rx_size = 0;                   // 主站→从站（SM2 / RxPDO）
-	uint16_t tx_size = 0;                   // 从站→主站（SM3 / TxPDO）
+	uint16_t rx_size = 0;                   		// 主站→从站（SM2 / RxPDO）
+	uint16_t tx_size = 0;                   		// 从站→主站（SM3 / TxPDO）
 };
 
 /**

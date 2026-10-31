@@ -34,7 +34,7 @@ struct PdoInputs
 };
 
 static_assert(sizeof(PdoOutputs) % sizeof(uint32_t) == 0, "RxPDO 必须按 32 位量对齐");
-static_assert(sizeof(PdoInputs) % sizeof(uint32_t) == 0, "TxPDO 必须按 32 位量对齐");
+static_assert(sizeof(PdoInputs)  % sizeof(uint32_t) == 0, "TxPDO 必须按 32 位量对齐");
 
 /**
  * @brief TxPDO 字数，由布局结构体推导

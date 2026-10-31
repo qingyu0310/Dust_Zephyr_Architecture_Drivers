@@ -2,45 +2,39 @@
 # 提供 GPIO/PWM/UART/CAN 等外设驱动，以及 printk/shell 调试通道
 # 每个 config 直接 select 对应的 Zephyr 子系统驱动符号
 
-config DUST_DEV_GPIO_OUTPUT
+config DUST_COM_CAN
     default n
-    bool "Enable GPIO output wrapper"
+    bool "CAN driver"
+    select CAN
+    help
+        Enable the CAN driver. Board DTS must provide the CAN controller node.
+
+config DUST_COM_ETHERCAT
+    default n
+    bool "EtherCAT slave"
+    help
+        Enable the EtherCAT slave driver in drivers/communication/ethercat.
+        C++ 实现，行为派生自倍福 SSC 5.13；派生范围与来源见
+        drivers/communication/ethercat/core/LICENSE-BECKHOFF.md，
+        该部分不受本项目 Apache-2.0 覆盖。
+        硬件实现（ESC 寄存器、IRQ、PHY、SII）由各芯片提供，本层不含任何厂商代码。
+
+config DUST_COM_RS485
+    default n
+    bool "RS485 half-duplex driver"
+    select SERIAL
+    select UART_ASYNC_API
     select GPIO
     help
-        Enable the GPIO output wrappers in drivers/device/gpio.
+        Enable the RS485 half-duplex driver using UART_ASYNC_API and a DE/RE GPIO.
 
-config DUST_DEV_GPIO_INPUT
+config DUST_COM_SPI
     default n
-    bool "Enable GPIO input wrapper"
+    bool "SPI driver"
+    select SPI
     select GPIO
     help
-        Enable the GPIO input wrappers in drivers/device/gpio.
-
-config DUST_DEV_PWM
-    default n
-    bool "Enable simple PWM device wrapper"
-    select PWM
-    help
-        Enable the lightweight PWM wrapper in drivers/device/pwm.
-
-config DUST_DEV_ECAT_PHY_JL1111
-    default n
-    bool "JL1111 EtherCAT PHY"
-    help
-        JL1111 100BASE-TX PHY（HPM6E00EVK 的 PORTA/PORTB）。
-        由业务线程（trd）按板卡组装时选用，不按 dts 自动选中。
-
-config DUST_DEV_ECAT_PHY_RTL8201F
-    default n
-    bool "RTL8201F EtherCAT PHY"
-    help
-        RTL8201F 100BASE-TX PHY（HPM5E31 自定义板的 PORTA）。
-
-config DUST_DEV_ECAT_PHY_TJA1101B
-    default n
-    bool "TJA1101B EtherCAT PHY"
-    help
-        TJA1101B 100BASE-T1 PHY（HPM5E31 自定义板的 PORTB）。
+        Enable the lightweight SPI wrapper in drivers/communication/spi.
 
 config DUST_COM_UART
     default n
@@ -61,30 +55,6 @@ config DUST_COM_UART_DMA
     help
         Enable the asynchronous DMA UART driver.
 
-config DUST_COM_SPI
-    default n
-    bool "SPI driver"
-    select SPI
-    select GPIO
-    help
-        Enable the lightweight SPI wrapper in drivers/communication/spi.
-
-config DUST_COM_CAN
-    default n
-    bool "CAN driver"
-    select CAN
-    help
-        Enable the CAN driver. Board DTS must provide the CAN controller node.
-
-config DUST_COM_RS485
-    default n
-    bool "RS485 half-duplex driver"
-    select SERIAL
-    select UART_ASYNC_API
-    select GPIO
-    help
-        Enable the RS485 half-duplex driver using UART_ASYNC_API and a DE/RE GPIO.
-
 config DUST_COM_USB
     default n
     bool "USB CDC ACM driver"
@@ -94,12 +64,58 @@ config DUST_COM_USB
     help
         Enable the C++ USB device CDC ACM stream.
 
-config DUST_COM_ETHERCAT
+config DUST_DEV_ECAT_PHY_JL1111
     default n
-    bool "EtherCAT slave"
+    bool "JL1111 EtherCAT PHY"
     help
-        Enable the EtherCAT slave driver in drivers/communication/ethercat.
-        C++ 实现，行为派生自倍福 SSC 5.13；派生范围与来源见
-        drivers/communication/ethercat/core/LICENSE-BECKHOFF.md，
-        该部分不受本项目 Apache-2.0 覆盖。
-        硬件实现（ESC 寄存器、IRQ、PHY、SII）由各芯片提供，本层不含任何厂商代码。
+        JL1111 100BASE-TX PHY（HPM6E00EVK 的 PORTA/PORTB）。
+        由业务线程（trd）按板卡组装时选用，不按 dts 自动选中。
+
+config DUST_DEV_ECAT_PHY_RTL8201F
+    default n
+    bool "RTL8201F EtherCAT PHY"
+    help
+        RTL8201F 100BASE-TX PHY（HPM5E31 自定义板的 PORTA）。
+
+config DUST_DEV_ECAT_PHY_TJA1101B
+    default n
+    bool "TJA1101B EtherCAT PHY"
+    help
+        TJA1101B 100BASE-T1 PHY（HPM5E31 自定义板的 PORTB）。
+
+config DUST_DEV_GPIO_INPUT
+    default n
+    bool "Enable GPIO input wrapper"
+    select GPIO
+    help
+        Enable the GPIO input wrappers in drivers/device/gpio.
+
+config DUST_DEV_GPIO_OUTPUT
+    default n
+    bool "Enable GPIO output wrapper"
+    select GPIO
+    help
+        Enable the GPIO output wrappers in drivers/device/gpio.
+
+config DUST_DEV_PWM
+    default n
+    bool "Enable simple PWM device wrapper"
+    select PWM
+    help
+        Enable the lightweight PWM wrapper in drivers/device/pwm.
+
+# SII 介质：板上有没有 I2C EEPROM 由这里决定，板卡 conf 不写
+config DUST_ECAT_SII_EEPROM
+    bool "板上 I2C EEPROM（CAT24C128 等）"
+    default n
+    depends on DUST_COM_ETHERCAT
+    select I2C
+    help
+      SII 存在芯片里，ESC 自己走 I2C 主控，应用层不参与读写。
+
+config DUST_ECAT_SII_FLASH
+    bool "Flash 分区模拟"
+    default n
+    depends on DUST_COM_ETHERCAT
+    help
+      SII 存在 Flash 分区，由应用层接管读写。

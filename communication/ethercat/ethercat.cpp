@@ -49,7 +49,7 @@ bool EthercatSlave::Init(EcatEsc& esc, EcatPhy* const* phys)
 			continue;
 		}
 
-		++phy_count_;
+		phy_count_++;
 		cfg.mdio_address = port;
 
 		if (!phys_[port]->Init(esc, cfg)) {
