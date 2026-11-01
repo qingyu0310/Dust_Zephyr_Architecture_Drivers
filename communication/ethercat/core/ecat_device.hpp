@@ -11,6 +11,7 @@
 #pragma once
 
 #include <cstdint>
+#include <zephyr/sys/atomic.h>
 
 #include "mailbox/ecat_coe.hpp"
 #include "model/ecat_dictionary.hpp"
@@ -62,7 +63,66 @@ public:
 	void SetOutputSink(OutputSink handler,   void* context);					// 业务输出接收者
 	void SetInputSource(InputSource handler, void* context);					// 业务输入提供者
 
+	bool RequestFaultReport();							// 请求线程输出保存的首次故障，未保存时返回 false
+	void ClearFaultReport() { atomic_set(&diagnostic_report_request_, 2); }	// 请求线程清除保存现场
+
 private:
+	struct DiagnosticSnapshot
+	{
+		uint32_t time_ms = 0;
+		uint32_t pdi = 0;
+		uint32_t sm2 = 0;
+		uint32_t sm3 = 0;
+		uint32_t ticks = 0;
+		uint32_t age_ms = 0;
+		uint32_t poll_gap_ms = 0;
+		uint32_t event_mask = 0;
+		uint16_t state = 0;
+		uint16_t code = 0;
+		uint16_t hw_state = 0;
+		uint16_t hw_code = 0;
+		uint16_t dl_status = 0;
+		uint16_t events = 0;
+		bool output = false;
+	};
+
+	static constexpr uint8_t kDiagnosticHistoryCount = 8;	// 每 250 ms 采样，保留约两秒历史
+	DiagnosticSnapshot diagnostic_history_[kDiagnosticHistoryCount] {};
+	DiagnosticSnapshot diagnostic_fault_history_[kDiagnosticHistoryCount] {};	// 故障历史副本，不随接收恢复覆盖
+	uint8_t diagnostic_fault_history_size_ = 0;
+	atomic_t diagnostic_fault_available_ = ATOMIC_INIT(0);
+	atomic_t diagnostic_report_request_ = ATOMIC_INIT(0);	// 1=输出保存现场，2=清除现场
+	DiagnosticSnapshot diagnostic_fault_ {};				// 首次故障现场，恢复后也不覆盖待输出内容
+	uint32_t diagnostic_fault_registers_[8] {};			// 看门狗三项、SM2/SM3 两项、故障时最大 SM2 间隔
+	uint32_t diagnostic_last_poll_ms_ = 0;
+	uint32_t diagnostic_max_poll_gap_ms_ = 0;			// 自上次历史采样以来的最大轮询间隔
+	uint32_t diagnostic_next_sample_ms_ = 0;
+	uint32_t diagnostic_next_dump_ms_ = 0;
+	uint32_t diagnostic_fault_id_ = 0;
+	uint32_t diagnostic_additional_faults_ = 0;			// 输出冻结现场期间再次退出 OP 的次数
+	uint16_t diagnostic_dump_line_ = 0;
+	uint8_t diagnostic_history_next_ = 0;
+	uint8_t diagnostic_history_size_ = 0;
+	bool diagnostic_poll_seen_ = false;
+	bool diagnostic_output_running_ = false;
+	bool diagnostic_dump_pending_ = false;
+	atomic_t diagnostic_tick_count_ = ATOMIC_INIT(0);		// 1 ms 入口累计次数
+
+	DiagnosticSnapshot CaptureDiagnosticSnapshot();		// 读取无 AL Control 确认副作用的诊断快照
+	void CaptureDiagnosticFault();						// 冻结历史并抓取首次故障寄存器
+	void ReportDiagnosticFault();						// 每 50 ms 输出一行冻结现场
+
+	uint32_t diagnostic_previous_sm2_ = 0;			// 上次报告时的 SM2 计数
+	bool diagnostic_received_ = false;				// 曾在输出运行时观察到接收
+	bool diagnostic_rx_failed_ = false;				// 上次报告处于停收状态
+
+	atomic_t diagnostic_pdi_count_ = ATOMIC_INIT(0);	// PDI 入口累计次数
+	atomic_t diagnostic_sm2_count_ = ATOMIC_INIT(0);	// SM2 事件处理累计次数（含线程轮询）
+	atomic_t diagnostic_last_sm2_ms_ = ATOMIC_INIT(0);	// 最近一次 SM2 事件的系统毫秒数
+	atomic_t diagnostic_max_sm2_gap_ = ATOMIC_INIT(0);	// 相邻 SM2 事件最大间隔（毫秒）
+	atomic_t diagnostic_sm3_count_ = ATOMIC_INIT(0);	// SM3 事件处理累计次数
+	int64_t diagnostic_next_report_ = 0;				// 线程每秒输出一次诊断
+
 	EcatEsc* esc_ = nullptr;				// ESC 硬件
 
 	EcatDictionary   dictionary_;			// 对象模型

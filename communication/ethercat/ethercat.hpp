@@ -83,6 +83,9 @@ public:
 	 */
 	void SetInputSource(EcatDevice::InputSource provider, void* context = nullptr) { device_.SetInputSource(provider, context); }
 
+	bool RequestFaultReport() { return device_.RequestFaultReport(); }	// 输出保存的首次故障
+	void ClearFaultReport() { device_.ClearFaultReport(); }			// 清除保存现场，允许保存下一次故障
+
 private:
 	EcatDevice device_;										// 协议栈组合根
 	EcatEsc*   esc_ = nullptr;								// ESC 硬件

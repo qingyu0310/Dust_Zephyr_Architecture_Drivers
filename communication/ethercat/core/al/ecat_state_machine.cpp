@@ -1030,6 +1030,8 @@ void EcatStateMachine::CheckErrors(EcatEsc& esc)
  */
 void EcatStateMachine::RequestLocalState(EcatEsc& esc, uint16_t code, AlState target)
 {
+	DUST_LOG_WRN("ecat local state: 0x%02x -> 0x%02x code=0x%04x", static_cast<unsigned>(state_), static_cast<unsigned>(target), static_cast<unsigned>(code));
+
 	if (state_ == AlState::Op && target != AlState::Op) {
 		LeaveOp(esc);
 	}

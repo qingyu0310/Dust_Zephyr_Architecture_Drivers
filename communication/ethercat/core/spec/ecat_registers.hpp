@@ -28,6 +28,12 @@ constexpr uint16_t kSlaveAddress = 0x0010;				// 站点地址，读 16 b
 
 }
 
+namespace reg {
+
+constexpr uint16_t kDlStatus = 0x0110;				// ESC DL 状态：链路与 PDI 状态，诊断只读
+
+}
+
 namespace comm_info {
 
 constexpr uint32_t kSmChannelsMask  = 0x0000FF00;		// SM 通道数字段

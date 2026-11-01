@@ -60,6 +60,12 @@ l_rx_rdy:
             return;
         }
 
+        // shell 接收诊断：字节打包成数值快照，不把 DMA 缓冲指针交给异步日志。
+        uint32_t head = 0;
+        for (uint16_t i = 0; i < len && i < 4; ++i) {
+            head = (head << 8) | data[i];
+        }
+
         unsigned key = irq_lock();
         uint8_t* p = self->rx_bip_.Reserve(len);
         if (p) {
