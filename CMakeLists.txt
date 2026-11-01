@@ -50,6 +50,7 @@ if(CONFIG_DUST_USB_DEVICE_STACK)
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core)
 endif()
+
 if(CONFIG_DUST_COM_USB)
     target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/usb.cpp)
     target_include_directories(app PRIVATE

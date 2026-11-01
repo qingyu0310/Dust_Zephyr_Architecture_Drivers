@@ -50,7 +50,7 @@ bool EthercatSlave::Init(EcatEsc& esc, EcatPhy* const* phys)
 		}
 
 		phy_count_++;
-		cfg.mdio_address = port;
+		cfg.mdio_address = esc.GetPhyAddress(port);
 
 		if (!phys_[port]->Init(esc, cfg)) {
 			return false;

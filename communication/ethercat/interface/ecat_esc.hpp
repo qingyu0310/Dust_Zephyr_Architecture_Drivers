@@ -123,6 +123,17 @@ public:
 	virtual bool MdioWrite(uint8_t phy, uint8_t reg, uint16_t value) = 0;
 
 	/**
+	 * @brief 读端口 PHY 的 MDIO 地址
+	 *
+	 * 地址由板卡原理图 strap 决定，与端口号不一定相等。
+	 * 板级 dts 的 `phy-addresses` 属性给出，缺省时退化为端口号。
+	 *
+	 * @param port 端口号（0 起）
+	 * @return MDIO 地址
+	 */
+	virtual uint8_t GetPhyAddress(uint8_t port) const = 0;
+
+	/**
 	 * @brief 把指定端口的链路状态写进 ESC
 	 * @param port 端口号（0 起）
 	 * @param up   true=链路建立
