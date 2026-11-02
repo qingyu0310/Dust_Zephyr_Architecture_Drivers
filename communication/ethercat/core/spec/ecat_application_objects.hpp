@@ -44,29 +44,30 @@ namespace ecat {
  * 这类代码一眼能看出在访问哪个对象。
  */
 namespace index {
-constexpr uint16_t kDeviceType           = 0x1000;
-constexpr uint16_t kErrorRegister        = 0x1001;
-constexpr uint16_t kDeviceName           = 0x1008;
-constexpr uint16_t kHardwareVersion      = 0x1009;
-constexpr uint16_t kSoftwareVersion      = 0x100A;
-constexpr uint16_t kIdentity             = 0x1018;
-constexpr uint16_t kErrorSettings        = 0x10F1;
-constexpr uint16_t kTimestamp            = 0x10F8;
-constexpr uint16_t kRxPdoMapping         = 0x1600;
-constexpr uint16_t kTxPdoMapping         = 0x1A00;
-constexpr uint16_t kSyncManagerType      = 0x1C00;
-constexpr uint16_t kRxPdoAssignment      = 0x1C12;
-constexpr uint16_t kTxPdoAssignment      = 0x1C13;
-constexpr uint16_t kSyncManagerOutPara   = 0x1C32;
-constexpr uint16_t kSyncManagerInPara    = 0x1C33;
-constexpr uint16_t kMailboxData          = 0x2000;
-constexpr uint16_t kInputCounter         = 0x6000;
-constexpr uint16_t kOutputCounter        = 0x7010;
-constexpr uint16_t kModularDeviceProfile = 0xF000;
+
+constexpr uint16_t kDeviceType           = 0x1000;		// 设备类型
+constexpr uint16_t kErrorRegister        = 0x1001;		// 错误寄存器
+constexpr uint16_t kDeviceName           = 0x1008;		// 设备名
+constexpr uint16_t kHardwareVersion      = 0x1009;		// 硬件版本
+constexpr uint16_t kSoftwareVersion      = 0x100A;		// 软件版本
+constexpr uint16_t kIdentity             = 0x1018;		// 身份对象
+constexpr uint16_t kErrorSettings        = 0x10F1;		// 错误设置
+constexpr uint16_t kTimestamp            = 0x10F8;		// 时间戳
+constexpr uint16_t kRxPdoMapping         = 0x1600;		// RxPDO 映射
+constexpr uint16_t kTxPdoMapping         = 0x1A00;		// TxPDO 映射
+constexpr uint16_t kSyncManagerType      = 0x1C00;		// 同步管理器类型
+constexpr uint16_t kRxPdoAssignment      = 0x1C12;		// SM2 分配
+constexpr uint16_t kTxPdoAssignment      = 0x1C13;		// SM3 分配
+constexpr uint16_t kSyncManagerOutPara   = 0x1C32;		// SM2 同步参数
+constexpr uint16_t kSyncManagerInPara    = 0x1C33;		// SM3 同步参数
+constexpr uint16_t kMailboxData          = 0x2000;		// 邮箱数据
+constexpr uint16_t kInputCounter         = 0x6000;		// 输入计数器
+constexpr uint16_t kOutputCounter        = 0x7010;		// 输出计数器
+constexpr uint16_t kModularDeviceProfile = 0xF000;		// 模块化设备配置
+
 }
 
-// 对象 0x1000 的值：设备类型（DEVICE_PROFILE_TYPE）
-constexpr uint32_t kDeviceProfileType = 0x00001389;
+constexpr uint32_t kDeviceProfileType = 0x00001389;		// 0x1000 的值：设备类型（DEVICE_PROFILE_TYPE）
 
 
 /**
@@ -80,14 +81,14 @@ namespace schema {
  */
 constexpr EntryDescription kEntry0x1000[] = {
  	{ DataType::Unsigned32, 0x20, access::kRead }, };
-constexpr char kName0x1000[] = "Device type";
+constexpr char kName0x1000[] = "Device type";		// 名称串（SDO Info 原样返回）
 
 /**
  * @brief 0x1001 错误寄存器
  */
 constexpr EntryDescription kEntry0x1001[] = {
  	{ DataType::Unsigned8, 0x08, access::kRead }, };
-constexpr char kName0x1001[] = "Error register";
+constexpr char kName0x1001[] = "Error register";		// 名称串
 
 /**
  * @brief 0x1008 设备名
@@ -96,21 +97,21 @@ constexpr char kName0x1001[] = "Error register";
  */
 constexpr EntryDescription kEntry0x1008[] = {
  	{ DataType::VisibleString, kDeviceNameLength * 8U, access::kRead }, };
-constexpr char kName0x1008[] = "Device name";
+constexpr char kName0x1008[] = "Device name";		// 名称串
 
 /**
  * @brief 0x1009 硬件版本
  */
 constexpr EntryDescription kEntry0x1009[] = {
  	{ DataType::VisibleString, kHardwareVersionLength * 8U, access::kRead }, };
-constexpr char kName0x1009[] = "Manufacturer Hardware version";
+constexpr char kName0x1009[] = "Manufacturer Hardware version";		// 名称串
 
 /**
  * @brief 0x100A 软件版本
  */
 constexpr EntryDescription kEntry0x100A[] = {
  	{ DataType::VisibleString, kSoftwareVersionLength * 8U, access::kRead }, };
-constexpr char kName0x100A[] = "Manufacturer Software version";
+constexpr char kName0x100A[] = "Manufacturer Software version";		// 名称串
 
 /**
  * @brief 0x1018 身份对象
@@ -154,7 +155,7 @@ constexpr char kName0x10F1[] =
  */
 constexpr EntryDescription kEntry0x10F8[] = {
  	{ DataType::Unsigned64, 0x40, access::kReadWrite | access::kTxPdoMapping }, };
-constexpr char kName0x10F8[] = "Timestamp Object\0\377";
+constexpr char kName0x10F8[] = "Timestamp Object\0\377";		// 名称串
 
 /**
  * @brief 0x1C00 同步管理器类型
@@ -168,12 +169,10 @@ constexpr EntryDescription kEntry0x1C00[] = {
 	{ DataType::Unsigned8, 0x08, access::kRead }, // 子索引 0
 	{ DataType::Unsigned8, 0x08, access::kRead }, // 子索引 1..n 共用
 };
-constexpr char kName0x1C00[] = "Sync manager type";
+constexpr char kName0x1C00[] = "Sync manager type";		// 名称串
 
-/** 0x1C00 的子索引 0（条目数） */
-constexpr uint16_t kSyncManagerTypeCount = 4;
-/** 0x1C00 的子条目数据 */
-constexpr uint16_t kSyncManagerTypes[] = { 0x0201, 0x0403 };
+constexpr uint16_t kSyncManagerTypeCount = 4;		// 0x1C00 子索引 0：条目数
+constexpr uint16_t kSyncManagerTypes[] = { 0x0201, 0x0403 };	// 0x1C00 子条目：邮箱对 + 过程数据对
 
 /**
  * @brief 0x1C32 / 0x1C33 同步参数
@@ -337,11 +336,11 @@ constexpr char kName0x1600[] =
 	"SubIndex 001\0"
 	"\377";
 
-constexpr PdoEntryTable<kProcessOutputWords> kTable0x1600 = MakePdoEntryTable<kProcessOutputWords>(access::kRead);
-constexpr PdoMappingTable<kProcessOutputWords> kMappingTable0x1600 = MakePdoMappingTable<kProcessOutputWords>(0x7010);
+constexpr PdoEntryTable<kProcessOutputWords>   kTable0x1600 	   = MakePdoEntryTable<kProcessOutputWords>(access::kRead);			// 条目描述表
+constexpr PdoMappingTable<kProcessOutputWords> kMappingTable0x1600 = MakePdoMappingTable<kProcessOutputWords>(0x7010);		// 映射表：0x7010:0n:32
 
-constexpr const EntryDescription* kEntry0x1600 = kTable0x1600.items;
-constexpr const uint32_t* kMapping0x1600 = kMappingTable0x1600.items;
+constexpr const EntryDescription* kEntry0x1600 = kTable0x1600.items;		// 对外句柄：条目描述表
+constexpr const uint32_t* kMapping0x1600 = kMappingTable0x1600.items;		// 对外句柄：映射表
 
 /**
  * @brief 0x1A00 TxPDO 映射
@@ -353,11 +352,11 @@ constexpr char kName0x1A00[] =
 	"SubIndex 001\0"
 	"\377";
 
-constexpr PdoEntryTable<kProcessInputWords> kTable0x1A00 = MakePdoEntryTable<kProcessInputWords>(access::kRead);
-constexpr PdoMappingTable<kProcessInputWords> kMappingTable0x1A00 = MakePdoMappingTable<kProcessInputWords>(0x6000);
+constexpr PdoEntryTable<kProcessInputWords> kTable0x1A00 = MakePdoEntryTable<kProcessInputWords>(access::kRead);			// 条目描述表
+constexpr PdoMappingTable<kProcessInputWords> kMappingTable0x1A00 = MakePdoMappingTable<kProcessInputWords>(0x6000);		// 映射表：0x6000:0n:32
 
-constexpr const EntryDescription* kEntry0x1A00 = kTable0x1A00.items;
-constexpr const uint32_t* kMapping0x1A00 = kMappingTable0x1A00.items;
+constexpr const EntryDescription* kEntry0x1A00 = kTable0x1A00.items;		// 对外句柄：条目描述表
+constexpr const uint32_t* kMapping0x1A00 = kMappingTable0x1A00.items;		// 对外句柄：映射表
 
 /**
  * @brief 0x1C12 SM2 分配
@@ -365,10 +364,10 @@ constexpr const uint32_t* kMapping0x1A00 = kMappingTable0x1A00.items;
  * 子索引 0 = 1，子索引 1 = 0x1600。
  */
 constexpr EntryDescription kEntry0x1C12[] = {
-	{ DataType::Unsigned8,  0x08, access::kRead },
- 	{ DataType::Unsigned16, 0x10, access::kRead }, };
-constexpr char kName0x1C12[] = "SyncManager 2 assignment\0\377";
-constexpr uint16_t kAssignment0x1C12[] = { 0x1600 };
+	{ DataType::Unsigned8,  0x08, access::kRead },		// 子索引 0：条目数
+ 	{ DataType::Unsigned16, 0x10, access::kRead }, };	// 子索引 1：被分配的映射对象
+constexpr char kName0x1C12[] = "SyncManager 2 assignment\0\377";		// 名称串
+constexpr uint16_t kAssignment0x1C12[] = { 0x1600 };					// 分配表：SM2 → RxPDO 映射
 
 /**
  * @brief 0x1C13 SM3 分配
@@ -376,37 +375,37 @@ constexpr uint16_t kAssignment0x1C12[] = { 0x1600 };
  * 子索引 0 = 1，子索引 1 = 0x1A00。
  */
 constexpr EntryDescription kEntry0x1C13[] = {
-	{ DataType::Unsigned8,  0x08, access::kRead },
- 	{ DataType::Unsigned16, 0x10, access::kRead }, };
-constexpr char kName0x1C13[] = "SyncManager 3 assignment\0\377";
-constexpr uint16_t kAssignment0x1C13[] = { 0x1A00 };
+	{ DataType::Unsigned8,  0x08, access::kRead },		// 子索引 0：条目数
+ 	{ DataType::Unsigned16, 0x10, access::kRead }, };	// 子索引 1：被分配的映射对象
+constexpr char kName0x1C13[] = "SyncManager 3 assignment\0\377";		// 名称串
+constexpr uint16_t kAssignment0x1C13[] = { 0x1A00 };					// 分配表：SM3 → TxPDO 映射
 
 /**
  * @brief 0x6000 输入计数器
  *
  * 可被映射进 TxPDO，只读。
  */
-constexpr char kName0x6000[] = "InputCounter\0\377";
+constexpr char kName0x6000[] = "InputCounter\0\377";		// 名称串
 
-constexpr PdoEntryTable<kProcessInputWords>  kTable0x6000 = MakePdoEntryTable<kProcessInputWords>(access::kRead | access::kTxPdoMapping);
-constexpr PdoEntryTable<kProcessOutputWords> kTable0x7010 = MakePdoEntryTable<kProcessOutputWords>(access::kReadWrite | access::kRxPdoMapping);
+constexpr PdoEntryTable<kProcessInputWords>  kTable0x6000 = MakePdoEntryTable<kProcessInputWords>(access::kRead | access::kTxPdoMapping);		// 只读，可进 TxPDO
+constexpr PdoEntryTable<kProcessOutputWords> kTable0x7010 = MakePdoEntryTable<kProcessOutputWords>(access::kReadWrite | access::kRxPdoMapping);	// 可读写，可进 RxPDO
 
-constexpr const EntryDescription* kEntry0x6000 = kTable0x6000.items;
-constexpr const EntryDescription* kEntry0x7010 = kTable0x7010.items;
+constexpr const EntryDescription* kEntry0x6000 = kTable0x6000.items;		// 对外句柄：0x6000 条目描述表
+constexpr const EntryDescription* kEntry0x7010 = kTable0x7010.items;		// 对外句柄：0x7010 条目描述表
 
 /**
  * @brief 0x7010 输出计数器
  *
  * 可被映射进 RxPDO，可读写。
  */
-constexpr char kName0x7010[] = "OutputCounter\0\377";
+constexpr char kName0x7010[] = "OutputCounter\0\377";		// 名称串
 
 /**
  * @brief 0x2000 邮箱数据
  */
 constexpr EntryDescription kEntry0x2000[] = {
-	{ DataType::Unsigned32, 0x20, access::kReadWrite }, };
-constexpr char kName0x2000[] = "MyMbxData\0\377";
+	{ DataType::Unsigned32, 0x20, access::kReadWrite }, };		// 单个可读写 UDINT
+constexpr char kName0x2000[] = "MyMbxData\0\377";		// 名称串
 
 /**
  * @brief 0xF000 模块化设备配置
@@ -417,9 +416,9 @@ constexpr EntryDescription kEntry0xF000[] = {
 	{ DataType::Unsigned16, 0x10, access::kRead }, // 最大模块数
 };
 constexpr char kName0xF000[] =
-	"Modular Device Profile\0"
-	"Index distance \0"
-	"Maximum number of modules \0"
+	"Modular Device Profile\0"		// 对象名
+	"Index distance \0"				// 子索引 1
+	"Maximum number of modules \0"	// 子索引 2
 	"\377";
 }
 
@@ -454,18 +453,18 @@ struct ObjectData
 	/**
 	 * @brief 0x1018 身份（C 版是 TOBJ1018，PACKED）
 	 */
-	uint16_t identity_sub_count = 4;   			// 子索引 0
-	uint32_t vendor_id 		= kVendorId;
-	uint32_t product_code 	= kProductCode;
-	uint32_t revision 		= kRevisionNumber;
-	uint32_t serial_number 	= kSerialNumber;
+	uint16_t identity_sub_count = 4;		// 子索引 0：条目数
+	uint32_t vendor_id     = kVendorId;			// 子索引 1：厂商 ID
+	uint32_t product_code  = kProductCode;		// 子索引 2：产品码
+	uint32_t revision      = kRevisionNumber;	// 子索引 3：版本号
+	uint32_t serial_number = kSerialNumber;		// 子索引 4：序列号
 
 	/**
 	 * @brief 0x10F1 错误设置（C 版是 TOBJ10F1，PACKED）
 	 */
-	uint16_t error_settings_sub_count = 2; 		// 子索引 0
-	uint32_t local_error_reaction 	  = 0;     	// 子索引 1
-	uint16_t sync_error_counter_limit = 0; 		// 子索引 2
+	uint16_t error_settings_sub_count = 2;		// 子索引 0：条目数
+	uint32_t local_error_reaction     = 0;		// 子索引 1：本地错误反应
+	uint16_t sync_error_counter_limit = 0;		// 子索引 2：同步错误计数上限
 
 	/**
 	 * @brief 0x1C32 / 0x1C33 同步参数
@@ -497,34 +496,34 @@ struct ObjectData
 		uint8_t  sync_error           = 0;          // 子索引 32
 	};
 
-	SyncParameters sync_manager_out; 				// 0x1C32
-	SyncParameters sync_manager_in; 	 			// 0x1C33
+	SyncParameters sync_manager_out;		// 0x1C32：SM2 输出同步参数
+	SyncParameters sync_manager_in;			// 0x1C33：SM3 输入同步参数
 
 	/**
 	 * @brief 0x1C00 同步管理器类型
 	 */
-	uint16_t sync_manager_type_count = schema::kSyncManagerTypeCount;
-	uint16_t sync_manager_types[2] = { 0x0201, 0x0403 };
+	uint16_t sync_manager_type_count = schema::kSyncManagerTypeCount;		// 子索引 0：条目数
+	uint16_t sync_manager_types[2] = { 0x0201, 0x0403 };					// 子条目：邮箱对 + 过程数据对
 
 	/**
 	 * @brief 0x2000 邮箱数据
 	 */
-	uint32_t mailbox_data = 0;
+	uint32_t mailbox_data = 0;		// 单值邮箱数据
 
 	/**
 	 * @brief 0x6000 / 0x7010 计数器
 	 */
-	uint16_t input_counter_count = kProcessInputWords;
-	uint32_t input_counter[kProcessInputWords] = {};
-	uint16_t output_counter_count = kProcessOutputWords;
-	uint32_t output_counter[kProcessOutputWords] = {};
+	uint16_t input_counter_count = kProcessInputWords;				// 0x6000 子索引 0：条目数
+	uint32_t input_counter[kProcessInputWords] = {};				// 0x6000 子条目：输入计数器
+	uint16_t output_counter_count = kProcessOutputWords;			// 0x7010 子索引 0：条目数
+	uint32_t output_counter[kProcessOutputWords] = {};				// 0x7010 子条目：输出计数器
 
 	/**
 	 * @brief 0xF000 模块化设备配置
 	 */
-	uint16_t modular_device_sub_count = 2;
-	uint16_t index_distance = 0x0010;
-	uint16_t max_modules = 0;
+	uint16_t modular_device_sub_count = 2;		// 子索引 0：条目数
+	uint16_t index_distance = 0x0010;			// 子索引 1：模块索引间距
+	uint16_t max_modules = 0;					// 子索引 2：最大模块数
 };
 
 /**

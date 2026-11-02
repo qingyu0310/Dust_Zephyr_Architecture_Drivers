@@ -22,7 +22,7 @@ namespace ecat {
  */
 struct PdoOutputs
 {
-	uint32_t counter[8];	// 输出计数器
+	uint32_t counter[64];	// 输出计数器
 };
 
 /**
@@ -30,7 +30,7 @@ struct PdoOutputs
  */
 struct PdoInputs
 {
-	uint32_t counter[8];	// 输入计数器
+	uint32_t counter[64];	// 输入计数器
 };
 
 static_assert(sizeof(PdoOutputs) % sizeof(uint32_t) == 0, "RxPDO 必须按 32 位量对齐");

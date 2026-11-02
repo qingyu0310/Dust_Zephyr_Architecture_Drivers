@@ -209,10 +209,10 @@ constexpr ObjectSlot kSlots[] = {
 	  offsetof(ObjectData, sync_manager_in),  DataKind::Member, nullptr, nullptr, nullptr, kOffsets0x1C33 },
 
 	// 应用对象
-	{index::kRxPdoMapping,  	ObjectCode::Record,   8, 	schema::kEntry0x1600, 	schema::kName0x1600,
+	{index::kRxPdoMapping,  	ObjectCode::Record,   kProcessOutputWords, schema::kEntry0x1600, schema::kName0x1600,
 	  0, DataKind::RxPdoMapping, nullptr, nullptr, nullptr, nullptr },
 
-	{index::kTxPdoMapping, 		ObjectCode::Record,   8, 	schema::kEntry0x1A00, 	schema::kName0x1A00,
+	{index::kTxPdoMapping, 		ObjectCode::Record,   kProcessInputWords,  schema::kEntry0x1A00, schema::kName0x1A00,
 	  0, DataKind::TxPdoMapping, nullptr, nullptr, nullptr, nullptr },
 
 	{index::kRxPdoAssignment, 	ObjectCode::Array,    1, 	schema::kEntry0x1C12, 	schema::kName0x1C12,
@@ -544,8 +544,7 @@ bool EcatDictionary::AllowedInCurrentState(uint16_t flags, bool write) const
  * @param written         输出：实际写入的字节数
  * @return 0=成功，否则为 SDO 中止码
  */
-uint32_t EcatDictionary::Read(uint16_t target, uint8_t sub_index, bool complete_access,
-                              void* data, uint32_t capacity, uint32_t* written)
+uint32_t EcatDictionary::Read(uint16_t target, uint8_t sub_index, bool complete_access, void* data, uint32_t capacity, uint32_t* written)
 {
 	const ObjectSlot* slot = Find(target);
 

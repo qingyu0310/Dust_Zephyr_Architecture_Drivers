@@ -31,9 +31,12 @@ public:
 	/**
 	 * @brief 分段缓冲容量
 	 *
-	 * 取 128 字节：最长的可分段对象是 0x1C3x（约 62 B），留一倍余量。
+	 * 映射表 CA 数据包含 2 字节条目数和每项 4 字节映射，容量按两个方向分别计算后取最大。
+	 * 保留 128 字节下限供标准对象使用，邮箱仍按原有大小执行分段传输。
 	 */
-	static constexpr uint16_t kSegmentCapacity = 128;
+	static constexpr uint32_t kMappingWords    = (kProcessOutputWords > kProcessInputWords) ? kProcessOutputWords : kProcessInputWords;
+	static constexpr uint32_t kMappingCapacity = 2U + sizeof(uint32_t) * kMappingWords;
+	static constexpr uint32_t kSegmentCapacity = (kMappingCapacity > 128U) ? kMappingCapacity : 128U;
 
 	EcatSdo() = default;
 

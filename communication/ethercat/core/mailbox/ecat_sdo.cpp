@@ -401,7 +401,7 @@ uint32_t EcatSdo::HandleDownloadSegment(MailboxFrame* frame, uint8_t* payload, u
 
 	// toggle 必须相对上一段翻转
 	if (toggle == last_toggle_) {
-		return sdo::kAbortGeneralError;
+		return sdo::kAbortToggleNotChanged;
 	}
 	last_toggle_ = toggle;
 
@@ -479,7 +479,7 @@ uint32_t EcatSdo::HandleUploadSegment(MailboxFrame* frame, uint8_t* payload)
 	const bool toggle = (header & sdo::kSegmentToggle) != 0;
 
 	if (toggle == last_toggle_) {
-		return sdo::kAbortGeneralError;
+		return sdo::kAbortToggleNotChanged;
 	}
 	last_toggle_ = toggle;
 

@@ -188,7 +188,8 @@ constexpr uint32_t kAbortParamLengthTooLong  = 0x06070012;	// 数据过长
 constexpr uint32_t kAbortParamLengthTooShort = 0x06070013;	// 数据过短
 constexpr uint32_t kAbortSubindexMismatch    = 0x06090030;	// 子索引与 CA 起始不匹配
 constexpr uint32_t kAbortGeneralError        = 0x08000000;	// 通用错误
-constexpr uint32_t kAbortNoMoreMemory        = 0x05030000;	// 缓冲不足
+constexpr uint32_t kAbortNoMoreMemory        = 0x05040005;	// 缓冲不足
+constexpr uint32_t kAbortToggleNotChanged    = 0x05030000;	// 分段 toggle 未翻转
 }
 
 /* SDO Information：命令 1 B + 操作 1 B */
