@@ -39,7 +39,6 @@ public:
 	EcatSync(const EcatSync&) = delete;
 	EcatSync& operator=(const EcatSync&) = delete;
 
-	void BindParameters(ObjectData::SyncParameters& out, ObjectData::SyncParameters& in);	// 绑定 0x1C32/0x1C33 的数据槽
 	void ResetParameters();																	// 装载 0x1C32/0x1C33 的初值
 
 	uint16_t PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_size);														// 转换到 PREOP 前准备同步参数
@@ -59,28 +58,23 @@ public:
 	uint64_t Timestamp() const { return timestamp_; }										// 0x10F8 当前值
 	bool IsSyncSequenceValid() const { return sm_sequence_valid_; }							// SM/Sync0 序列是否有效
 	bool HasProcessWatchdog() const { return process_wd_value_ > 0; }						// 主站是否配置了过程数据看门狗
-	bool IsInputLatchedOnSync1() const { return dc_sync_active_ && in_ != nullptr && in_->sync_type == static_cast<uint16_t>(SyncType::DcSync1); }	// 输入是否由 SYNC1 锁存
+	bool IsInputLatchedOnSync1() const { return dc_sync_active_ && in_.sync_type == static_cast<uint16_t>(SyncType::DcSync1); }	// 输入是否由 SYNC1 锁存
 	bool IsInputSmSynchron() const															// 输入是否走 SM/SM2 同步（DC 模式返回 false）
 	{
-		if (in_ == nullptr) {
-			return true;
-		}
-
-		const uint16_t type = in_->sync_type;
+		const uint16_t type = in_.sync_type;
 
 		return type == static_cast<uint16_t>(SyncType::SmSynchron) || type == static_cast<uint16_t>(SyncType::Sm2Synchron) || type == static_cast<uint16_t>(SyncType::FreeRun);
 	}
 
-	const ObjectData::SyncParameters& OutputParameters() const { return *out_; }			// SM2 参数（0x1C32）
-	const ObjectData::SyncParameters& InputParameters()  const { return *in_; }				// SM3 参数（0x1C33）
+	const ObjectData::SyncParameters& OutputParameters() const { return out_; }			// SM2 参数（0x1C32）
+	const ObjectData::SyncParameters& InputParameters()  const { return in_; }				// SM3 参数（0x1C33）
 
 private:
 	static SyncType DeriveSyncType(uint32_t control);										// 从 DC 控制寄存器推导同步类型
 	static uint16_t ValidateSyncType(SyncType configured, uint16_t supported);				// 校验同步类型是否被支持
 	
-	ObjectData::SyncParameters* out_ = nullptr;			// 字典里 0x1C32 的数据
-	ObjectData::SyncParameters* in_  = nullptr;			// 字典里 0x1C33 的数据
-	bool bound_ = false;								// 是否已绑定到字典
+	ObjectData::SyncParameters out_ {};					// 0x1C32 参数，同步域是唯一权威持有者
+	ObjectData::SyncParameters in_  {};					// 0x1C33 参数
 
 	uint16_t sm_sync0_counter_ = 0;						// SYNC0 计数，SM 事件时清零
 	uint16_t sm_sync0_value_ = 0;						// 一个 SM 周期内允许的 SYNC0 数，0=不检查

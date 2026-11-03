@@ -43,49 +43,33 @@ uint32_t ReadRegister32(EcatEsc& esc, uint16_t address)
 }
 
 /**
- * @brief 绑定 0x1C32 / 0x1C33 的数据槽
- * @param out SM2 参数（0x1C32）
- * @param in  SM3 参数（0x1C33）
- */
-void EcatSync::BindParameters(ObjectData::SyncParameters& out, ObjectData::SyncParameters& in)
-{
-	out_ = &out;
-	in_ = &in;
-	bound_ = true;
-}
-
-/**
  * @brief 装载 0x1C32/0x1C33 的初值
  */
 void EcatSync::ResetParameters()
 {
-	if (!bound_) {
-		return;
-	}
+	out_.sub_count = 32;
+	out_.sync_type = static_cast<uint16_t>(SyncType::FreeRun);
+	out_.cycle_time = 0;
+	out_.sync_types_supported = kSyncTypeFreeRunSupp | kSyncTypeTimesVariable | kSyncTypeSynchronSupp | kSyncTypeDcSync0Supp | kSyncTypeDcSync1Supp | kSyncTypeSubcycleSupp;
+	out_.min_cycle_time = kMinProcessCycleTimeNs;
+	out_.calc_and_copy_time = kOutputCalcCopyTimeNs;
+	out_.get_cycle_time = 0;
+	out_.delay_time = kOutputDelayTimeNs;
+	out_.sm_event_missed = 0;
+	out_.cycle_exceeded = 0;
+	out_.sync_error = 0;
 
-	out_->sub_count = 32;
-	out_->sync_type = static_cast<uint16_t>(SyncType::FreeRun);
-	out_->cycle_time = 0;
-	out_->sync_types_supported = kSyncTypeFreeRunSupp | kSyncTypeTimesVariable | kSyncTypeSynchronSupp | kSyncTypeDcSync0Supp | kSyncTypeDcSync1Supp | kSyncTypeSubcycleSupp;
-	out_->min_cycle_time = kMinProcessCycleTimeNs;
-	out_->calc_and_copy_time = kOutputCalcCopyTimeNs;
-	out_->get_cycle_time = 0;
-	out_->delay_time = kOutputDelayTimeNs;
-	out_->sm_event_missed = 0;
-	out_->cycle_exceeded = 0;
-	out_->sync_error = 0;
-
-	in_->sub_count = 32;
-	in_->sync_type = static_cast<uint16_t>(SyncType::FreeRun);
-	in_->cycle_time = out_->cycle_time;
-	in_->sync_types_supported = out_->sync_types_supported;
-	in_->min_cycle_time = kMinProcessCycleTimeNs;
-	in_->calc_and_copy_time = kInputCalcCopyTimeNs;
-	in_->get_cycle_time = 0;
-	in_->delay_time = kInputDelayTimeNs;
-	in_->sm_event_missed = 0;
-	in_->cycle_exceeded = 0;
-	in_->sync_error = 0;
+	in_.sub_count = 32;
+	in_.sync_type = static_cast<uint16_t>(SyncType::FreeRun);
+	in_.cycle_time = out_.cycle_time;
+	in_.sync_types_supported = out_.sync_types_supported;
+	in_.min_cycle_time = kMinProcessCycleTimeNs;
+	in_.calc_and_copy_time = kInputCalcCopyTimeNs;
+	in_.get_cycle_time = 0;
+	in_.delay_time = kInputDelayTimeNs;
+	in_.sm_event_missed = 0;
+	in_.cycle_exceeded = 0;
+	in_.sync_error = 0;
 
 	sync_set_by_user_ = false;
 	dc_sync_active_ = false;
@@ -115,10 +99,6 @@ void EcatSync::ResetParameters()
  */
 uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_size)
 {
-	if (!bound_) {
-		return al_status::kNoError;
-	}
-
 	out_size_ = output_size;
 	in_size_  = input_size;
 
@@ -162,20 +142,20 @@ uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_
 
 		const uint32_t sync0_cycle = ReadRegister32(esc, reg::kDcSync0CycleTime);
 
-		if (sync0_cycle != 0 && (sync0_cycle < out_->min_cycle_time || sync0_cycle > kMaxProcessCycleTimeNs)) {
+		if (sync0_cycle != 0 && (sync0_cycle < out_.min_cycle_time || sync0_cycle > kMaxProcessCycleTimeNs)) {
 			return al_status::kDcSync0CycleTime;
 		}
 	}
 
 	// 主站显式写过 0x1C3x:01 就以它为准，否则用 DC 寄存器推导
 	if (sync_set_by_user_) {
-		const uint16_t check_out = ValidateSyncType(static_cast<SyncType>(out_->sync_type), out_->sync_types_supported);
+		const uint16_t check_out = ValidateSyncType(static_cast<SyncType>(out_.sync_type), out_.sync_types_supported);
 
 		if (check_out != al_status::kNoError) {
 			return check_out;
 		}
 
-		const uint16_t check_in = ValidateSyncType(static_cast<SyncType>(in_->sync_type), in_->sync_types_supported);
+		const uint16_t check_in = ValidateSyncType(static_cast<SyncType>(in_.sync_type), in_.sync_types_supported);
 
 		if (check_in != al_status::kNoError) {
 			return check_in;
@@ -197,11 +177,11 @@ uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_
 			sync_in  = (input_size > 0) ? dc_type : static_cast<uint16_t>(SyncType::FreeRun);
 		}
 
-		out_->sync_type = sync_out;
-		in_->sync_type = sync_in;
+		out_.sync_type = sync_out;
+		in_.sync_type = sync_in;
 	}
 
-	dc_sync_active_ = (out_->sync_type == static_cast<uint16_t>(SyncType::DcSync0)) || (out_->sync_type == static_cast<uint16_t>(SyncType::DcSync1));
+	dc_sync_active_ = (out_.sync_type == static_cast<uint16_t>(SyncType::DcSync0)) || (out_.sync_type == static_cast<uint16_t>(SyncType::DcSync1));
 
 	return al_status::kNoError;
 }
@@ -213,10 +193,6 @@ uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_
  */
 uint16_t EcatSync::StartSm(EcatEsc& esc)
 {
-	if (!bound_) {
-		return al_status::kNoError;
-	}
-
 	sm_sync0_counter_ = 0;
 	latch_input_counter_ = 0;
 	sync0_wd_counter_ = 0;
@@ -276,7 +252,7 @@ uint16_t EcatSync::StartSm(EcatEsc& esc)
 				++latch_input_value_;
 			}
 		}
-		else if (out_->sync_type == static_cast<uint16_t>(SyncType::DcSync0))
+		else if (out_.sync_type == static_cast<uint16_t>(SyncType::DcSync0))
 		{
 			sm_sync0_value_ = 1;
 			latch_input_value_ = 1;
@@ -333,7 +309,7 @@ EcatSync::WatchdogResult EcatSync::Tick(EcatEsc& esc)
 
 	if (dc_running_) {
 		// 同步错误上限来自 0x10F1:02，0 表示不限制
-		sm_sequence_valid_ = (sync_error_limit_ == 0) || (out_->sm_event_missed < sync_error_limit_);
+		sm_sequence_valid_ = (sync_error_limit_ == 0) || (out_.sm_event_missed < sync_error_limit_);
 	} else {
 		sm_sequence_valid_ = false;
 		return WatchdogResult::SyncTimeout;
@@ -382,10 +358,10 @@ void EcatSync::OnProcessOutput()
 		sm_sync0_counter_ = 0;
 	}
 
-	if (out_->sm_event_missed > 0) {
-		--out_->sm_event_missed;
+	if (out_.sm_event_missed > 0) {
+		--out_.sm_event_missed;
 	}
-	in_->sm_event_missed = out_->sm_event_missed;
+	in_.sm_event_missed = out_.sm_event_missed;
 }
 
 /**
@@ -422,11 +398,11 @@ bool EcatSync::OnSync0(bool* input_pending)
 	// SSC：上限判据用 0x10F1:02 的 sync_error_limit_
 	if (sm_sync0_value_ > 0) {
 		if (sm_sync0_counter_ > sm_sync0_value_) {
-			if (out_size_ > 0 && out_->sm_event_missed <= sync_error_limit_) {
-				out_->sm_event_missed = static_cast<uint16_t>(out_->sm_event_missed + 3U);
+			if (out_size_ > 0 && out_.sm_event_missed <= sync_error_limit_) {
+				out_.sm_event_missed = static_cast<uint16_t>(out_.sm_event_missed + 3U);
 			}
-			if (in_size_ > 0 && out_size_ == 0 && in_->sm_event_missed <= sync_error_limit_) {
-				in_->sm_event_missed = static_cast<uint16_t>(in_->sm_event_missed + 3U);
+			if (in_size_ > 0 && out_size_ == 0 && in_.sm_event_missed <= sync_error_limit_) {
+				in_.sm_event_missed = static_cast<uint16_t>(in_.sm_event_missed + 3U);
 			}
 		}
 		if (sm_sync0_counter_ <= sm_sync0_value_) {
@@ -458,13 +434,9 @@ void EcatSync::OnSync1()
  */
 void EcatSync::UpdateErrorStatus()
 {
-	if (!bound_) {
-		return;
-	}
-
 	// SSC COE_UpdateSyncErrorStatus：上限来自 0x10F1:02（sync_error_limit_）
-	out_->sync_error = (out_->cycle_exceeded > 0 || out_->sm_event_missed > sync_error_limit_) ? 1U : 0U;
-	in_->sync_error = (in_->cycle_exceeded > 0 || in_->sm_event_missed > sync_error_limit_) ? 1U : 0U;
+	out_.sync_error = (out_.cycle_exceeded > 0 || out_.sm_event_missed > sync_error_limit_) ? 1U : 0U;
+	in_.sync_error = (in_.cycle_exceeded > 0 || in_.sm_event_missed > sync_error_limit_) ? 1U : 0U;
 }
 
 /**

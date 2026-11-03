@@ -100,16 +100,12 @@ const char* SkipNames(const char* text, uint8_t skip)
 }
 
 /**
- * @brief 绑定字典与应答通道
+ * @brief 绑定字典
  * @param dictionary 对象字典
- * @param sink       应答提交回调
- * @param context    回调上下文
  */
-void EcatSdoInfo::Bind(EcatDictionary& dictionary, ReplySink sink, void* context)
+void EcatSdoInfo::Bind(EcatDictionary* dictionary)
 {
-	dictionary_ = &dictionary;
-	sink_ = sink;
-	sink_context_ = context;
+	dictionary_ = dictionary;
 }
 
 /**
@@ -127,10 +123,15 @@ void EcatSdoInfo::Reset()
  * @param frame 报文
  * @return 0=已处理；非 0 为邮箱错误码
  */
-uint8_t EcatSdoInfo::Handle(MailboxFrame* frame)
+EcatSdoInfo::Result EcatSdoInfo::Handle(MailboxFrame* frame)
 {
+	Result result {};
+
+	reply_length_ = 0;
+
 	if (frame == nullptr || frame->data == nullptr || dictionary_ == nullptr) {
-		return mailbox::kErrorServiceNotSupported;
+		result.code = mailbox::kErrorServiceNotSupported;
+		return result;
 	}
 
 	const uint16_t payload_length = wire::ReadLe16(frame->data, mailbox::kLengthOffset);
@@ -138,17 +139,33 @@ uint8_t EcatSdoInfo::Handle(MailboxFrame* frame)
 
 	// 公共头必须完整
 	if (total < kDataOffset || total > frame->length) {
-		return mailbox::kErrorInvalidSize;
+		result.code = mailbox::kErrorInvalidSize;
+		return result;
 	}
 
 	// SSC：InfoHead 是 16 位，低 7 位是 opcode
 	const uint16_t info_head = wire::ReadLe16(frame->data, kInfoOffset);
-	const uint8_t operation = static_cast<uint8_t>(info_head & sdo_info::kOpcodeMask);
+	const uint8_t  operation = static_cast<uint8_t>(info_head & sdo_info::kOpcodeMask);
 
+	result.code = Dispatch(operation, frame, static_cast<uint16_t>(total));
+	result.length = reply_length_;
+
+	return result;
+}
+
+/**
+ * @brief 按 opcode 分发到各处理分支
+ * @param operation opcode
+ * @param frame     报文
+ * @param total     请求报文长度
+ * @return 0=成功；非 0 为邮箱错误码
+ */
+uint8_t EcatSdoInfo::Dispatch(uint8_t operation, MailboxFrame* frame, uint16_t total)
+{
 	switch (operation)
 	{
 		case sdo_info::kOpGetOdList:
-			return HandleList(0, frame, static_cast<uint16_t>(total));
+			return HandleList(0, frame, total);
 
 		case sdo_info::kOpGetObjectDescription:
 			// 对象描述请求需要 Index(2) + SubIndex(1) 共 3 字节服务数据
@@ -212,10 +229,8 @@ uint8_t EcatSdoInfo::HandleList(uint8_t list_type, MailboxFrame* frame, uint16_t
 
 		SetMailboxLength(frame, static_cast<uint16_t>(response_length - kMailboxHeaderSize));
 		frame->length = response_length;
+		reply_length_ = response_length;
 
-		if (sink_ != nullptr) {
-			return sink_(sink_context_, frame->data, response_length);
-		}
 		return 0;
 	}
 
@@ -240,10 +255,15 @@ uint8_t EcatSdoInfo::HandleList(uint8_t list_type, MailboxFrame* frame, uint16_t
  * @param frame 可写的报文缓冲
  * @return 0=成功；非 0 为邮箱错误码
  */
-uint8_t EcatSdoInfo::Continue(MailboxFrame* frame)
+EcatSdoInfo::Result EcatSdoInfo::Continue(MailboxFrame* frame)
 {
+	Result result {};
+
+	reply_length_ = 0;
+
 	if (frame == nullptr || frame->data == nullptr || fragments_left_ == 0) {
-		return mailbox::kErrorServiceNotSupported;
+		result.code = mailbox::kErrorServiceNotSupported;
+		return result;
 	}
 
 	uint16_t indices[32] = {};
@@ -251,7 +271,10 @@ uint8_t EcatSdoInfo::Continue(MailboxFrame* frame)
 
 	--fragments_left_;
 
-	return HandleListFragment(frame, list_type_, indices, count, fragments_left_ > 0);
+	result.code = HandleListFragment(frame, list_type_, indices, count, fragments_left_ > 0);
+	result.length = reply_length_;
+
+	return result;
 }
 
 /**
@@ -304,10 +327,8 @@ uint8_t EcatSdoInfo::HandleListFragment(MailboxFrame* frame, uint8_t list_type, 
 
 	SetMailboxLength(frame, static_cast<uint16_t>(response_length - kMailboxHeaderSize));
 	frame->length = response_length;
+	reply_length_ = response_length;
 
-	if (sink_ != nullptr) {
-		return sink_(sink_context_, frame->data, response_length);
-	}
 	return 0;
 }
 
@@ -355,10 +376,8 @@ uint8_t EcatSdoInfo::HandleObjectDescription(MailboxFrame* frame)
 
 	SetMailboxLength(frame, static_cast<uint16_t>(response_length - kMailboxHeaderSize));
 	frame->length = response_length;
+	reply_length_ = response_length;
 
-	if (sink_ != nullptr) {
-		return sink_(sink_context_, frame->data, response_length);
-	}
 	return 0;
 }
 
@@ -420,10 +439,8 @@ uint8_t EcatSdoInfo::HandleEntryDescription(MailboxFrame* frame)
 
 	SetMailboxLength(frame, static_cast<uint16_t>(response_length - kMailboxHeaderSize));
 	frame->length = response_length;
+	reply_length_ = response_length;
 
-	if (sink_ != nullptr) {
-		return sink_(sink_context_, frame->data, response_length);
-	}
 	return 0;
 }
 

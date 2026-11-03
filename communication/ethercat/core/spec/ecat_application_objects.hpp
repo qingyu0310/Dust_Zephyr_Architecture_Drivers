@@ -336,8 +336,8 @@ constexpr char kName0x1600[] =
 	"SubIndex 001\0"
 	"\377";
 
-constexpr PdoEntryTable<kProcessOutputWords>   kTable0x1600 	   = MakePdoEntryTable<kProcessOutputWords>(access::kRead);			// 条目描述表
-constexpr PdoMappingTable<kProcessOutputWords> kMappingTable0x1600 = MakePdoMappingTable<kProcessOutputWords>(0x7010);		// 映射表：0x7010:0n:32
+constexpr PdoEntryTable  <kMaxProcessWords> kTable0x1600 	    = MakePdoEntryTable<kMaxProcessWords>(access::kRead);		// 条目描述表
+constexpr PdoMappingTable<kMaxProcessWords> kMappingTable0x1600 = MakePdoMappingTable<kMaxProcessWords>(0x7010);			// 映射表：0x7010:0n:32
 
 constexpr const EntryDescription* kEntry0x1600 = kTable0x1600.items;		// 对外句柄：条目描述表
 constexpr const uint32_t* kMapping0x1600 = kMappingTable0x1600.items;		// 对外句柄：映射表
@@ -352,11 +352,31 @@ constexpr char kName0x1A00[] =
 	"SubIndex 001\0"
 	"\377";
 
-constexpr PdoEntryTable<kProcessInputWords> kTable0x1A00 = MakePdoEntryTable<kProcessInputWords>(access::kRead);			// 条目描述表
-constexpr PdoMappingTable<kProcessInputWords> kMappingTable0x1A00 = MakePdoMappingTable<kProcessInputWords>(0x6000);		// 映射表：0x6000:0n:32
+constexpr PdoEntryTable  <kMaxProcessWords> kTable0x1A00		= MakePdoEntryTable<kMaxProcessWords>(access::kRead);		// 条目描述表
+constexpr PdoMappingTable<kMaxProcessWords> kMappingTable0x1A00 = MakePdoMappingTable<kMaxProcessWords>(0x6000);			// 映射表：0x6000:0n:32
 
 constexpr const EntryDescription* kEntry0x1A00 = kTable0x1A00.items;		// 对外句柄：条目描述表
 constexpr const uint32_t* kMapping0x1A00 = kMappingTable0x1A00.items;		// 对外句柄：映射表
+
+/**
+ * @brief 取 RxPDO 映射表（0x1600）的一项
+ * @param sub_index 子索引，1 起
+ * @return 打包后的映射值
+ */
+constexpr uint32_t RxMappingEntry(uint8_t sub_index)
+{
+	return kMapping0x1600[sub_index - 1];
+}
+
+/**
+ * @brief 取 TxPDO 映射表（0x1A00）的一项
+ * @param sub_index 子索引，1 起
+ * @return 打包后的映射值
+ */
+constexpr uint32_t TxMappingEntry(uint8_t sub_index)
+{
+	return kMapping0x1A00[sub_index - 1];
+}
 
 /**
  * @brief 0x1C12 SM2 分配
@@ -387,8 +407,8 @@ constexpr uint16_t kAssignment0x1C13[] = { 0x1A00 };					// 分配表：SM3 → 
  */
 constexpr char kName0x6000[] = "InputCounter\0\377";		// 名称串
 
-constexpr PdoEntryTable<kProcessInputWords>  kTable0x6000 = MakePdoEntryTable<kProcessInputWords>(access::kRead | access::kTxPdoMapping);		// 只读，可进 TxPDO
-constexpr PdoEntryTable<kProcessOutputWords> kTable0x7010 = MakePdoEntryTable<kProcessOutputWords>(access::kReadWrite | access::kRxPdoMapping);	// 可读写，可进 RxPDO
+constexpr PdoEntryTable<kMaxProcessWords> kTable0x6000 = MakePdoEntryTable<kMaxProcessWords>(access::kRead | access::kTxPdoMapping);		// 只读，可进 TxPDO
+constexpr PdoEntryTable<kMaxProcessWords> kTable0x7010 = MakePdoEntryTable<kMaxProcessWords>(access::kReadWrite | access::kRxPdoMapping);	// 可读写，可进 RxPDO
 
 constexpr const EntryDescription* kEntry0x6000 = kTable0x6000.items;		// 对外句柄：0x6000 条目描述表
 constexpr const EntryDescription* kEntry0x7010 = kTable0x7010.items;		// 对外句柄：0x7010 条目描述表
@@ -420,6 +440,7 @@ constexpr char kName0xF000[] =
 	"Index distance \0"				// 子索引 1
 	"Maximum number of modules \0"	// 子索引 2
 	"\377";
+
 }
 
 /**
@@ -513,10 +534,10 @@ struct ObjectData
 	/**
 	 * @brief 0x6000 / 0x7010 计数器
 	 */
-	uint16_t input_counter_count = kProcessInputWords;				// 0x6000 子索引 0：条目数
-	uint32_t input_counter[kProcessInputWords] = {};				// 0x6000 子条目：输入计数器
-	uint16_t output_counter_count = kProcessOutputWords;			// 0x7010 子索引 0：条目数
-	uint32_t output_counter[kProcessOutputWords] = {};				// 0x7010 子条目：输出计数器
+	uint16_t input_counter_count = kMaxProcessWords;				// 0x6000 子索引 0：条目数
+	uint32_t input_counter[kMaxProcessWords] = {};					// 0x6000 子条目：输入计数器
+	uint16_t output_counter_count = kMaxProcessWords;				// 0x7010 子索引 0：条目数
+	uint32_t output_counter[kMaxProcessWords] = {};					// 0x7010 子条目：输出计数器
 
 	/**
 	 * @brief 0xF000 模块化设备配置

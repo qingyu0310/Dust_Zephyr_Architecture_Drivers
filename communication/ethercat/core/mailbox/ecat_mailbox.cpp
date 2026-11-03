@@ -84,14 +84,35 @@ void ClearRepeatAcknowledge(EcatEsc& esc)
 }
 
 /**
- * @brief 绑定协议分发
- * @param dispatcher 分发回调
- * @param context    上下文
+ * @brief 向父层借出接收帧，缓冲仍由邮箱池持有
+ * @return 接收帧；未运行或队列为空时返回 nullptr
  */
-void EcatMailbox::SetDispatcher(Dispatcher dispatcher, void* context)
+MailboxFrame* EcatMailbox::TakeReceived()
 {
-	dispatcher_ = dispatcher;
-	dispatcher_context_ = context;
+	return running_ ? Dequeue(false) : nullptr;
+}
+
+/**
+ * @brief 接收帧处理完成，统一提交应答或归还缓冲
+ * @param frame 从接收队列借出的帧
+ * @param code  协议处理结果，非零时生成邮箱错误应答
+ */
+void EcatMailbox::CompleteReceived(MailboxFrame* frame, uint8_t code)
+{
+	if (frame == nullptr || frame->data == nullptr) {
+		return;
+	}
+	if (code != 0)
+	{
+		DUST_LOG_ERR("ecat: mailbox service error 0x%02x", static_cast<unsigned>(code));
+		wire::WriteLe16(frame->data, mailbox::kLengthOffset, 4);
+		wire::WriteLe16(frame->data, mailbox::kProtocolOffset, 0);
+		wire::WriteLe16(frame->data, kMailboxHeaderSize, code);
+		frame->length = kMailboxHeaderSize + 4;
+	}
+	if (frame->length == 0 || Submit(frame) == SubmitResult::NoMemory) {
+		Release(frame);
+	}
 }
 
 /**
@@ -190,10 +211,9 @@ void EcatMailbox::Stop(EcatEsc& esc)
 }
 
 /**
- * @brief 线程上下文：处理收到的报文、推进发送队列、处理重发请求
+ * @brief 线程上下文：推进发送队列、处理重发请求
  *
- * 顺序照 MBX_Main：先处理接收队列，再看能否解锁接收，
- * 再看 SM1 是否已被读走，最后看重发请求。
+ * 父层先处理接收队列，本函数再检查 SM1 读取完成、重发请求和待发帧。
  *
  * @param esc ESC 硬件
  */
@@ -201,36 +221,6 @@ void EcatMailbox::Service(EcatEsc& esc)
 {
 	if (!running_) {
 		return;
-	}
-
-	MailboxFrame* frame = nullptr;
-
-	while ((frame = Dequeue(false)) != nullptr) {
-		uint8_t result = 0;
-
-		if (dispatcher_ != nullptr) {
-			result = dispatcher_(dispatcher_context_, frame);
-		}
-
-		if (result != 0)
-		{
-			// 协议层返回错误：同一块缓冲改写成邮箱错误报文，长度 4，类型 0
-			DUST_LOG_ERR("ecat: mailbox service error 0x%02x", static_cast<unsigned>(result));
-			wire::WriteLe16(frame->data, mailbox::kLengthOffset,   4);
-			wire::WriteLe16(frame->data, mailbox::kProtocolOffset, 0);
-			wire::WriteLe16(frame->data, kMailboxHeaderSize, 	   result);
-			frame->length = kMailboxHeaderSize + 4;
-
-			if (Submit(frame) == SubmitResult::NoMemory) {
-				Release(frame);
-			}
-		} else {
-			// 协议层若已通过 Submit 把这块缓冲交给发送队列，所有权已转移，不能再释放；
-			// 没交出去的（协议层不产生应答）才还回池
-			if (!IsQueued(frame)) {
-				Release(frame);
-			}
-		}
 	}
 
 	// 收包由 PDI 事件驱动（HandleAlEvents 里调 Receive）；

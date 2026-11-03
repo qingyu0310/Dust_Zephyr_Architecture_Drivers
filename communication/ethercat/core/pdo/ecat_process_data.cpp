@@ -2,8 +2,8 @@
  * @file ecat_process_data.cpp
  * @author qingyu
  * @brief 过程数据域实现
- * @version 0.1
- * @date 2026-10-30
+ * @version 0.2
+ * @date 2026-11-02
  *
  * @copyright Copyright (c) 2026
  */
@@ -12,39 +12,32 @@
 
 #include <cstring>
 
-#include "model/ecat_dictionary.hpp"
+#include "spec/ecat_application_objects.hpp"
+#include "spec/ecat_limits.hpp"
 #include "spec/ecat_object.hpp"
-#include "interface/ecat_esc.hpp"
 
 namespace ecat {
 
 namespace {
 
 /**
- * @brief 累加一张 PDO 分配表指向的映射表的总位长度
+ * @brief 累加一张映射表的总位长度
  *
  * 只解析已知的两种映射表，不在表里的索引直接判失败，不静默跳过
  * （静默跳过会让布局偏小，主站看到的是半截数据）。
  *
- * @param assignment_kind 分配表的类别（0x1C12 或 0x1C13）
- * @param mapping_kind    被分配表的映射表类别（0x1600 或 0x1A00）
- * @param bits            输出：累计位长度
+ * @param rx    true=RxPDO 映射表（0x1600），false=TxPDO（0x1A00）
+ * @param words 映射条目数，由 Profile 决定
+ * @param bits  输出：累计位长度
  * @return 0=成功，否则为 AL 状态码
  */
-uint16_t SumMappingBits(DataKind assignment_kind, DataKind mapping_kind, uint32_t* bits)
+uint16_t SumMappingBits(bool rx, uint8_t words, uint32_t* bits)
 {
 	*bits = 0;
 
-	const uint16_t assigned = EcatDictionary::AssignmentEntryOf(assignment_kind, 1);
-
-	if (assigned != index::kRxPdoMapping && assigned != index::kTxPdoMapping) {
-		return al_status::kInvalidOutputMapping;
-	}
-
-	const uint8_t words = (mapping_kind == DataKind::RxPdoMapping) ? kProcessOutputWords : kProcessInputWords;
-
-	for (uint8_t sub = 1; sub <= words; ++sub) {
-		const uint32_t mapping = EcatDictionary::MappingEntryOf(mapping_kind, sub);
+	for (uint8_t sub = 1; sub <= words; ++sub) 
+	{
+		const uint32_t mapping = rx ? schema::RxMappingEntry(sub) : schema::TxMappingEntry(sub);
 
 		if (mapping == 0) {
 			return al_status::kInvalidOutputMapping;
@@ -57,53 +50,43 @@ uint16_t SumMappingBits(DataKind assignment_kind, DataKind mapping_kind, uint32_
 }
 
 /**
- * @brief 解析 0x1C12/0x1C13 与 0x1600/0x1A00，算出两方向字节数
+ * @brief 按 Profile 与映射表算出两方向字节数
  *
  * 失败时不改动现有布局，保证"提交失败不更新一半"。
  *
- * @param dictionary 对象字典
  * @return 0=成功，否则为 AL 状态码
  */
-uint16_t EcatProcessData::Configure(const EcatDictionary& dictionary)
+uint16_t EcatProcessData::Configure()
 {
-	(void)dictionary;
-
 	uint32_t output_bits = 0;
 	uint32_t input_bits = 0;
 
-	uint16_t result = SumMappingBits(DataKind::RxPdoAssignment, DataKind::RxPdoMapping, &output_bits);
+	uint16_t result = SumMappingBits(true, profile_.rx_words, &output_bits);
 
 	if (result != al_status::kNoError) {
 		return result;
 	}
 
-	// 分配表内容必须是 0x1C12 → 0x1600 这一对，否则算出来的长度没有意义
-	if (EcatDictionary::AssignmentEntryOf(DataKind::RxPdoAssignment, 1) != index::kRxPdoMapping) {
-		return al_status::kInvalidOutputMapping;
-	}
-
-	result = SumMappingBits(DataKind::TxPdoAssignment, DataKind::TxPdoMapping, &input_bits);
+	result = SumMappingBits(false, profile_.tx_words, &input_bits);
 
 	if (result != al_status::kNoError) {
-		return result;
-	}
-	if (EcatDictionary::AssignmentEntryOf(DataKind::TxPdoAssignment, 1) != index::kTxPdoMapping) {
 		return al_status::kInvalidInputMapping;
 	}
 
 	const uint16_t output_bytes = BitsToBytes(output_bits);
-	const uint16_t input_bytes = BitsToBytes(input_bits);
+	const uint16_t input_bytes  = BitsToBytes(input_bits);
 
 	// 容量校验，超额时不动现有布局
-	if (output_bytes > kMaxProcessOutputSize) {
+	if (output_bytes > kMaxProcessBytes) {
 		return al_status::kInvalidOutputMapping;
 	}
-	if (input_bytes > kMaxProcessInputSize) {
+	if (input_bytes > kMaxProcessBytes) {
 		return al_status::kInvalidInputMapping;
 	}
 
 	layout_.rx_size = output_bytes;
 	layout_.tx_size = input_bytes;
+
 	return al_status::kNoError;
 }
 
@@ -125,14 +108,14 @@ uint16_t EcatProcessData::ValidateAreas(uint16_t sm2_area, uint16_t sm3_area, ui
 {
 	constexpr uint16_t kThreeBufferCount = 3;
 
-	const uint16_t input_span = static_cast<uint16_t>(layout_.tx_size * kThreeBufferCount);
+	const uint16_t input_span  = static_cast<uint16_t>(layout_.tx_size * kThreeBufferCount);
 	const uint16_t output_span = static_cast<uint16_t>(layout_.rx_size * kThreeBufferCount);
 
 	// 输入区不得压到邮箱区
-	if (((sm3_area + input_span) > mbx_out_addr) && (sm3_area < (mbx_out_addr + mbx_out_size))) {
+	if (((sm3_area + input_span) > mbx_out_addr) && (sm3_area < (mbx_out_addr + mbx_out_size)))  {
 		return al_status::kInvalidSmInCfg;
 	}
-	if (((sm3_area + input_span) > mbx_in_addr) && (sm3_area < (mbx_in_addr + mbx_in_size))) {
+	if (((sm3_area + input_span) > mbx_in_addr)  && (sm3_area < (mbx_in_addr + mbx_in_size)))    {
 		return al_status::kInvalidSmInCfg;
 	}
 
@@ -140,10 +123,10 @@ uint16_t EcatProcessData::ValidateAreas(uint16_t sm2_area, uint16_t sm3_area, ui
 	if (((sm2_area + output_span) > mbx_out_addr) && (sm2_area < (mbx_out_addr + mbx_out_size))) {
 		return al_status::kInvalidSmOutCfg;
 	}
-	if (((sm2_area + output_span) > mbx_in_addr) && (sm2_area < (mbx_in_addr + mbx_in_size))) {
+	if (((sm2_area + output_span) > mbx_in_addr)  && (sm2_area < (mbx_in_addr + mbx_in_size)))   {
 		return al_status::kInvalidSmOutCfg;
 	}
-	if (((sm2_area + output_span) > sm3_area) && (sm2_area < (sm3_area + layout_.tx_size))) {
+	if (((sm2_area + output_span) > sm3_area)     && (sm2_area < (sm3_area + layout_.tx_size)))  {
 		return al_status::kInvalidSmOutCfg;
 	}
 
@@ -199,7 +182,7 @@ void EcatProcessData::PublishInputs(EcatEsc& esc, uint16_t address)
  */
 void EcatProcessData::SetOutputSink(OutputSink handler, void* context)
 {
-	output_sink_ = handler;
+	output_sink_    = handler;
 	output_context_ = context;
 }
 
@@ -210,7 +193,7 @@ void EcatProcessData::SetOutputSink(OutputSink handler, void* context)
  */
 void EcatProcessData::SetInputSource(InputSource provider, void* context)
 {
-	input_source_ = provider;
+	input_source_  = provider;
 	input_context_ = context;
 }
 
@@ -220,7 +203,7 @@ void EcatProcessData::SetInputSource(InputSource provider, void* context)
 void EcatProcessData::Clear()
 {
 	std::memset(output_buffer_, 0, sizeof(output_buffer_));
-	std::memset(input_buffer_, 0, sizeof(input_buffer_));
+	std::memset(input_buffer_,  0, sizeof(input_buffer_));
 }
 
 }

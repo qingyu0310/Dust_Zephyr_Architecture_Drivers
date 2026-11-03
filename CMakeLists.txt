@@ -72,7 +72,7 @@ endif()
 #   core/     组合根（device）
 if(CONFIG_DUST_COM_ETHERCAT)
     target_sources(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/ethercat.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/diag/ecat_diagnostics.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/model/ecat_dictionary.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/pdo/ecat_process_data.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_mailbox.cpp

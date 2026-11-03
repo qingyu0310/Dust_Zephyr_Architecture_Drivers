@@ -1,13 +1,11 @@
 /**
  * @file ecat_coe.hpp
  * @author qingyu
- * @brief CoE 服务路由：按 CoE 头把报文分给 SDO 或 SDO Info
- * @version 0.1
- * @date 2026-10-30
+ * @brief CoE 服务选择：解析报头，不持有服务对象
+ * @version 0.2
+ * @date 2026-11-03
  *
- * 来源：`ssc/ecatcoe.c` 的 COE_Init / COE_ServiceInd / COE_ContinueInd。
- * 纯路由，不拥有任何状态——C 版的 `pCoeSendStored` 是邮箱级背压，
- * 本实现的邮箱域自带队列，不需要 CoE 再存一份。
+ * 来源：SSC ecatcoe.c 的服务分类；服务调用与应答提交由父层完成。
  *
  * @copyright Copyright (c) 2026
  */
@@ -17,33 +15,29 @@
 #include <cstdint>
 
 #include "mailbox/ecat_mailbox.hpp"
-#include "mailbox/ecat_sdo.hpp"
-#include "mailbox/ecat_sdo_info.hpp"
 
 namespace ecat {
 
 /**
- * @brief CoE 服务路由
+ * @brief 无状态的 CoE 请求分类
  */
 class EcatCoe final
 {
 public:
-	EcatCoe() = default;
+	enum class Service : uint8_t
+	{
+		None,	// 无可处理服务
+		Sdo,	// SDO 请求
+		Info,	// SDO Information 请求
+	};
 
-	EcatCoe(const EcatCoe&) = delete;
-	EcatCoe& operator=(const EcatCoe&) = delete;
+	struct Selection
+	{
+		Service service = Service::None;	// 请求对应的服务
+		uint8_t code = 0;					// 非零为邮箱错误码
+	};
 
-	void Bind(EcatSdo& sdo, EcatSdoInfo& sdo_info);					// 绑定 SDO 与 SDO Info
-
-	static uint8_t Dispatch(void* context, MailboxFrame* frame);	// 邮箱分发入口，context 为本对象
-
-	uint8_t Continue(MailboxFrame* frame);							// 推进未发完的 SDO Info 分片
-
-private:
-	uint8_t Service(void* context, MailboxFrame* frame);
-
-	EcatSdo*     sdo_ = nullptr;		// SDO 服务
-	EcatSdoInfo* sdo_info_ = nullptr;	// SDO Info 服务
+	static Selection Select(const MailboxFrame* frame);	// 校验报头并返回服务类型
 };
 
 }

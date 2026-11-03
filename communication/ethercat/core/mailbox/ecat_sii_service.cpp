@@ -13,7 +13,6 @@
 #include "spec/ecat_registers.hpp"
 #include "spec/ecat_wire.hpp"
 #include "interface/ecat_esc.hpp"
-#include "log.hpp"
 #include "spec/ecat_limits.hpp"
 
 namespace ecat {
@@ -53,11 +52,10 @@ void Write32(EcatEsc& esc, uint16_t address, uint32_t value)
 /**
  * @brief 绑定硬件能力
  * @param esc ESC 硬件
- * @param sii SII 介质
  */
-void EcatSiiService::Bind(EcatEsc& esc)
+void EcatSiiService::Bind(EcatEsc* esc)
 {
-	esc_ = &esc;
+	esc_ = esc;
 }
 
 /**

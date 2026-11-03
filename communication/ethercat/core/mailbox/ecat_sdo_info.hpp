@@ -25,24 +25,32 @@ namespace ecat {
 class EcatSdoInfo final
 {
 public:
-	using ReplySink = uint8_t (*)(void* context, uint8_t* data, uint16_t length);	// 应答提交回调
+	/**
+	 * @brief 一次请求的处理结果
+	 */
+	struct Result
+	{
+		uint8_t  code   = 0;			// 非 0 时为邮箱错误码
+		uint16_t length = 0;			// 应答总字节数（含邮箱头），0=无应答
+	};
 
 	EcatSdoInfo() = default;
 
 	EcatSdoInfo(const EcatSdoInfo&) = delete;
 	EcatSdoInfo& operator=(const EcatSdoInfo&) = delete;
 
-	void Bind(EcatDictionary& dictionary, ReplySink sink, void* context);			// 绑定字典与应答通道
+	void Bind(EcatDictionary* dictionary);											// 绑定字典
 
-	uint8_t Handle(MailboxFrame* frame);											// 处理一帧 SDO Info 请求
+	Result Handle(MailboxFrame* frame);												// 处理一帧 SDO Info 请求，应答写回原帧
 
 	bool HasPendingFragment() const { return fragments_left_ > 0; }					// 还有未发完的分片
 
-	uint8_t Continue(MailboxFrame* frame);											// 生成下一帧分片应答
+	Result Continue(MailboxFrame* frame);											// 生成下一帧分片应答
 
 	void Reset();																	// 清空分片状态
 
 private:
+	uint8_t Dispatch(uint8_t operation, MailboxFrame* frame, uint16_t total);		// 按 opcode 分发到各处理分支
 	uint8_t HandleList(uint8_t list_type, MailboxFrame* frame, uint16_t size);		// 处理对象列表请求
 	uint8_t HandleObjectDescription(MailboxFrame* frame);							// 处理对象描述请求
 	uint8_t HandleEntryDescription(MailboxFrame* frame);							// 处理条目描述请求
@@ -50,8 +58,7 @@ private:
 	uint8_t HandleListFragment(MailboxFrame* frame, uint8_t list_type, const uint16_t* indices, uint16_t count, bool more);	// 写一帧列表分片并应答
 
 	EcatDictionary* dictionary_ = nullptr;			// 对象字典
-	ReplySink       sink_ 		= nullptr;			// 应答提交回调
-	void*           sink_context_ = nullptr;		// 回调上下文
+	uint16_t reply_length_ = 0;						// 本次产生的应答总长，0=无应答
 
 	uint16_t fragments_left_ = 0;					// 还剩几片
 	uint16_t next_index_ = 0x1000;					// 下一片从这个对象索引开始

@@ -2,8 +2,8 @@
  * @file ecat_limits.hpp
  * @author qingyu
  * @brief 协议容量、超时、身份标识常量，全部编译期求值
- * @version 0.1
- * @date 2026-10-30
+ * @version 0.2
+ * @date 2026-11-02
  *
  * @copyright Copyright (c) 2026
  */
@@ -12,13 +12,10 @@
 
 #include <cstdint>
 
-#include "spec/ecat_pdo_layout.hpp"
-
 namespace ecat {
 
-/* 过程数据容量（每方向），容量上限不是实际有效长度——实际长度由 0x1C12/0x1C13 算出 */
-constexpr uint16_t kMaxProcessInputSize  = static_cast<uint16_t>(kProcessInputWords * sizeof(uint32_t));	// 从站→主站（SM3 / TxPDO）容量
-constexpr uint16_t kMaxProcessOutputSize = static_cast<uint16_t>(kProcessOutputWords * sizeof(uint32_t));	// 主站→从站（SM2 / RxPDO）容量
+constexpr uint16_t kMaxProcessBytes = 0x100;								// 单方向过程数据字节上限 256 B，业务类型不得超过
+constexpr uint8_t  kMaxProcessWords = kMaxProcessBytes / sizeof(uint32_t);	// 单方向 32 位字数上限 64
 
 /* 邮箱尺寸：SM0 按最小尺寸、SM1 按最大尺寸，这个不对称是 SSC 的既有行为 */
 constexpr uint16_t kMinMailboxSize = 0x0024;		// SM0 接收邮箱尺寸

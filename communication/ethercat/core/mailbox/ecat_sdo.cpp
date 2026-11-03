@@ -5,8 +5,8 @@
  * @version 0.1
  * @date 2026-10-30
  *
- * 返回值约定：0=已处理且应答已交出；kAbort* 常量=处理失败需组中止应答；
- * mailbox::kError* 只从 Handle 返回，不从中止码路径返回。
+ * 返回值约定：Handle 返回 Result（邮箱错误码 + 应答总长）；应答原地写在收到的帧里。
+ * kAbort* 常量=处理失败需组中止应答；mailbox::kError* 只从 Handle 返回，不从中止码路径返回。
  *
  * @copyright Copyright (c) 2026
  */
@@ -72,16 +72,12 @@ void SetCoeResponse(MailboxFrame* frame)
 }
 
 /**
- * @brief 绑定字典与应答通道
+ * @brief 绑定字典
  * @param dictionary 对象字典
- * @param sink       应答提交回调
- * @param context    回调上下文
  */
-void EcatSdo::Bind(EcatDictionary& dictionary, ReplySink sink, void* context)
+void EcatSdo::Bind(EcatDictionary* dictionary)
 {
-	dictionary_ = &dictionary;
-	sink_ = sink;
-	sink_context_ = context;
+	dictionary_ = dictionary;
 }
 
 /**
@@ -89,10 +85,15 @@ void EcatSdo::Bind(EcatDictionary& dictionary, ReplySink sink, void* context)
  * @param frame 收到的报文
  * @return 0=已处理；非 0 为邮箱错误码
  */
-uint8_t EcatSdo::Handle(MailboxFrame* frame)
+EcatSdo::Result EcatSdo::Handle(MailboxFrame* frame)
 {
+	Result result {};
+
+	reply_length_ = 0;
+
 	if (frame == nullptr || frame->data == nullptr || dictionary_ == nullptr) {
-		return mailbox::kErrorServiceNotSupported;
+		result.code = mailbox::kErrorServiceNotSupported;
+		return result;
 	}
 
 	const uint16_t payload_length = MailboxLength(*frame);
@@ -100,12 +101,14 @@ uint8_t EcatSdo::Handle(MailboxFrame* frame)
 
 
 	if (total < kMinSdoLength || total > frame->length) {
-		return mailbox::kErrorInvalidSize;
+		result.code = mailbox::kErrorInvalidSize;
+		return result;
 	}
 
 	// 上一个 SDO 还没结束：本实现没有异步应答，in_work_ 恒为 false，保留判断给后续接入
 	if (in_work_) {
-		return mailbox::kErrorServiceInWork;
+		result.code = mailbox::kErrorServiceInWork;
+		return result;
 	}
 
 	const uint8_t command_byte = frame->data[kSdoOffset];
@@ -144,7 +147,9 @@ uint8_t EcatSdo::Handle(MailboxFrame* frame)
 		BuildAbort(frame, abort_code, index, sub_index);
 		Reply(frame, static_cast<uint16_t>(kSdoOffset + sdo::kHeaderSize + 4));
 	}
-	return 0;
+
+	result.length = reply_length_;
+	return result;
 }
 
 /**
@@ -210,7 +215,7 @@ uint32_t EcatSdo::BuildUpload(MailboxFrame* frame, uint8_t* payload, uint16_t le
 
 		std::memset(payload + 4, 0, 4);
 
-		const uint32_t result = dictionary_->Read(index, sub_index, complete_access, payload + 4, 4, &written);
+		const uint32_t result = dictionary_->Read(index, sub_index, complete_access, payload + 4, 4, &written, state_, timestamp_);
 
 		if (result != 0) {
 			return result;
@@ -224,7 +229,7 @@ uint32_t EcatSdo::BuildUpload(MailboxFrame* frame, uint8_t* payload, uint16_t le
 		SetMailboxLength(frame, kExpeditedLength - kMailboxHeaderSize);
 
 		// SSC：应答提交失败要如实上报，不能当成功吞掉
-		return (Reply(frame, kExpeditedLength) == 0) ? 0 : sdo::kAbortNoMoreMemory;
+		return Reply(frame, kExpeditedLength) ? 0 : sdo::kAbortNoMoreMemory;
 	}
 
 	// Normal Upload：一个邮箱装得下
@@ -234,7 +239,7 @@ uint32_t EcatSdo::BuildUpload(MailboxFrame* frame, uint8_t* payload, uint16_t le
 	{
 		uint32_t written = 0;
 
-		const uint32_t result = dictionary_->Read(index, sub_index, complete_access, payload + sdo::kCompleteSizeOffset + 4, data_capacity, &written);
+		const uint32_t result = dictionary_->Read(index, sub_index, complete_access, payload + sdo::kCompleteSizeOffset + 4, data_capacity, &written, state_, timestamp_);
 
 		if (result != 0) {
 			return result;
@@ -250,7 +255,7 @@ uint32_t EcatSdo::BuildUpload(MailboxFrame* frame, uint8_t* payload, uint16_t le
 
 		SetMailboxLength(frame, static_cast<uint16_t>(kUploadNormalResponseSize + object_length));
 
-		return (Reply(frame, response_length) == 0) ? 0 : sdo::kAbortNoMoreMemory;
+		return Reply(frame, response_length) ? 0 : sdo::kAbortNoMoreMemory;
 	}
 
 	// 分段上传
@@ -260,7 +265,7 @@ uint32_t EcatSdo::BuildUpload(MailboxFrame* frame, uint8_t* payload, uint16_t le
 
 	uint32_t written = 0;
 
-	const uint32_t result = dictionary_->Read(index, sub_index, complete_access, segment_buffer_, kSegmentCapacity, &written);
+	const uint32_t result = dictionary_->Read(index, sub_index, complete_access, segment_buffer_, kSegmentCapacity, &written, state_, timestamp_);
 
 	if (result != 0) {
 		return result;
@@ -281,7 +286,7 @@ uint32_t EcatSdo::BuildUpload(MailboxFrame* frame, uint8_t* payload, uint16_t le
 	SetCoeResponse(frame);
 	SetMailboxLength(frame, 10);
 
-	return (Reply(frame, kExpeditedLength) == 0) ? 0 : sdo::kAbortNoMoreMemory;
+	return Reply(frame, kExpeditedLength) ? 0 : sdo::kAbortNoMoreMemory;
 }
 
 /**
@@ -310,7 +315,7 @@ uint32_t EcatSdo::BuildDownload(MailboxFrame* frame, uint8_t* payload, uint16_t 
 
 		// expedited 时长度编码在命令字节 bit2..3，值为 4 - 实际长度
 		const uint32_t data_size = 4U - ((command_byte & sdo::kExpSizeMask) >> sdo::kExpSizeShift);
-		const uint32_t result = dictionary_->Write(index, sub_index, complete_access, payload + 4, data_size);
+		const uint32_t result = dictionary_->Write(index, sub_index, complete_access, payload + 4, data_size, state_);
 
 		if (result != 0) {
 			return result;
@@ -321,7 +326,7 @@ uint32_t EcatSdo::BuildDownload(MailboxFrame* frame, uint8_t* payload, uint16_t 
 		SetCoeResponse(frame);
 		SetMailboxLength(frame, 10);
 
-		return (Reply(frame, kExpeditedLength) == 0) ? 0 : sdo::kAbortNoMoreMemory;
+		return Reply(frame, kExpeditedLength) ? 0 : sdo::kAbortNoMoreMemory;
 	}
 
 	// 正常下载：SDO 头后 4 字节是数据总长度
@@ -365,11 +370,11 @@ uint32_t EcatSdo::BuildDownload(MailboxFrame* frame, uint8_t* payload, uint16_t 
 		SetCoeResponse(frame);
 		SetMailboxLength(frame, 10);
 
-		return (Reply(frame, kExpeditedLength) == 0) ? 0 : sdo::kAbortNoMoreMemory;
+		return Reply(frame, kExpeditedLength) ? 0 : sdo::kAbortNoMoreMemory;
 	}
 
 	// 一次性下载
-	const uint32_t result = dictionary_->Write(index, sub_index, complete_access, payload + sdo::kCompleteSizeOffset + 4, inline_bytes);
+	const uint32_t result = dictionary_->Write(index, sub_index, complete_access, payload + sdo::kCompleteSizeOffset + 4, inline_bytes, state_);
 
 	if (result != 0) {
 		return result;
@@ -380,7 +385,7 @@ uint32_t EcatSdo::BuildDownload(MailboxFrame* frame, uint8_t* payload, uint16_t 
 	SetCoeResponse(frame);
 	SetMailboxLength(frame, 10);
 
-	return (Reply(frame, kExpeditedLength) == 0) ? 0 : sdo::kAbortNoMoreMemory;
+	return Reply(frame, kExpeditedLength) ? 0 : sdo::kAbortNoMoreMemory;
 }
 
 /**
@@ -445,7 +450,7 @@ uint32_t EcatSdo::HandleDownloadSegment(MailboxFrame* frame, uint8_t* payload, u
 			return sdo::kAbortParamLengthTooShort;
 		}
 
-		const uint32_t result = dictionary_->Write(segment_index_, segment_sub_index_, segment_complete_access_, segment_buffer_, segment_total_size_);
+		const uint32_t result = dictionary_->Write(segment_index_, segment_sub_index_, segment_complete_access_, segment_buffer_, segment_total_size_, state_);
 
 		Abort();
 
@@ -460,7 +465,7 @@ uint32_t EcatSdo::HandleDownloadSegment(MailboxFrame* frame, uint8_t* payload, u
 	SetCoeResponse(frame);
 	SetMailboxLength(frame, kDownloadNormalResponseSize);
 
-	return (Reply(frame, static_cast<uint16_t>(kMailboxHeaderSize + kDownloadNormalResponseSize)) == 0) ? 0 : sdo::kAbortNoMoreMemory;
+	return Reply(frame, static_cast<uint16_t>(kMailboxHeaderSize + kDownloadNormalResponseSize)) ? 0 : sdo::kAbortNoMoreMemory;
 }
 
 /**
@@ -535,7 +540,7 @@ uint32_t EcatSdo::HandleUploadSegment(MailboxFrame* frame, uint8_t* payload)
 
 	SetMailboxLength(frame, static_cast<uint16_t>(response_length - kMailboxHeaderSize));
 
-	const bool submitted = (Reply(frame, response_length) == 0);
+	const bool submitted = Reply(frame, response_length);
 
 	if (last_segment) {
 		Abort();
@@ -574,23 +579,24 @@ void EcatSdo::BuildAbort(MailboxFrame* frame, uint32_t abort_code, uint16_t inde
 }
 
 /**
- * @brief 把应答交给邮箱层
+ * @brief 标记应答就绪
+ *
+ * 应答原地写在收到的帧缓冲里，由父层在 Handle 返回后统一提交。
+ *
  * @param frame  报文
  * @param length 应答字节数
- * @return 0=成功
+ * @return true=应答已写好
  */
-uint8_t EcatSdo::Reply(MailboxFrame* frame, uint16_t length)
+bool EcatSdo::Reply(MailboxFrame* frame, uint16_t length)
 {
 	if (frame == nullptr) {
-		return mailbox::kErrorInvalidSize;
+		return false;
 	}
 
 	frame->length = length;
+	reply_length_ = length;
 
-	if (sink_ != nullptr) {
-		return sink_(sink_context_, frame->data, length);
-	}
-	return 0;
+	return true;
 }
 
 /**

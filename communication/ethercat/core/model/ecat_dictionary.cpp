@@ -159,8 +159,8 @@ constexpr PdoOffsetTable<N> MakePdoOffsets(uint16_t count_offset, uint16_t array
 	return table;
 }
 
-constexpr PdoOffsetTable<kProcessInputWords>  kTable0x6000 = MakePdoOffsets<kProcessInputWords> (offsetof(ObjectData, input_counter_count),  offsetof(ObjectData, input_counter));
-constexpr PdoOffsetTable<kProcessOutputWords> kTable0x7010 = MakePdoOffsets<kProcessOutputWords>(offsetof(ObjectData, output_counter_count), offsetof(ObjectData, output_counter));
+constexpr PdoOffsetTable<kMaxProcessWords> kTable0x6000 = MakePdoOffsets<kMaxProcessWords>(offsetof(ObjectData, input_counter_count),  offsetof(ObjectData, input_counter));
+constexpr PdoOffsetTable<kMaxProcessWords> kTable0x7010 = MakePdoOffsets<kMaxProcessWords>(offsetof(ObjectData, output_counter_count), offsetof(ObjectData, output_counter));
 
 constexpr const uint16_t* kOffsets0x6000 = kTable0x6000.items;
 constexpr const uint16_t* kOffsets0x7010 = kTable0x7010.items;
@@ -209,10 +209,10 @@ constexpr ObjectSlot kSlots[] = {
 	  offsetof(ObjectData, sync_manager_in),  DataKind::Member, nullptr, nullptr, nullptr, kOffsets0x1C33 },
 
 	// 应用对象
-	{index::kRxPdoMapping,  	ObjectCode::Record,   kProcessOutputWords, schema::kEntry0x1600, schema::kName0x1600,
+	{index::kRxPdoMapping,  	ObjectCode::Record,   kMaxProcessWords, schema::kEntry0x1600, schema::kName0x1600,
 	  0, DataKind::RxPdoMapping, nullptr, nullptr, nullptr, nullptr },
 
-	{index::kTxPdoMapping, 		ObjectCode::Record,   kProcessInputWords,  schema::kEntry0x1A00, schema::kName0x1A00,
+	{index::kTxPdoMapping, 		ObjectCode::Record,   kMaxProcessWords, schema::kEntry0x1A00, schema::kName0x1A00,
 	  0, DataKind::TxPdoMapping, nullptr, nullptr, nullptr, nullptr },
 
 	{index::kRxPdoAssignment, 	ObjectCode::Array,    1, 	schema::kEntry0x1C12, 	schema::kName0x1C12,
@@ -224,10 +224,10 @@ constexpr ObjectSlot kSlots[] = {
 	{index::kMailboxData, 		ObjectCode::Variable, 0, 	schema::kEntry0x2000, 	schema::kName0x2000,
 	  offsetof(ObjectData, mailbox_data), 			DataKind::Member, nullptr, nullptr, nullptr, nullptr },
 
-	{index::kInputCounter, 		ObjectCode::Array, 	kProcessInputWords, 	schema::kEntry0x6000, 	schema::kName0x6000,
+	{index::kInputCounter, 		ObjectCode::Array, 	kMaxProcessWords, 	schema::kEntry0x6000, 	schema::kName0x6000,
 	  offsetof(ObjectData, input_counter_count), 	DataKind::Member, nullptr, nullptr, nullptr, kOffsets0x6000 },
 
-	{index::kOutputCounter, 	ObjectCode::Array, kProcessOutputWords, schema::kEntry0x7010, schema::kName0x7010,
+	{index::kOutputCounter, 	ObjectCode::Array, kMaxProcessWords, schema::kEntry0x7010, schema::kName0x7010,
 	  offsetof(ObjectData, output_counter_count), 	DataKind::Member, nullptr, nullptr, nullptr, kOffsets0x7010 },
 
 	{index::kModularDeviceProfile, ObjectCode::Record, 2, schema::kEntry0xF000, schema::kName0xF000,
@@ -243,25 +243,30 @@ constexpr uint8_t kArrayDescriptionCount = 2;	// 数组/记录的条目描述只
 }
 
 /**
- * @brief 绑定状态查询回调
- * @param query   查询函数
- * @param context 上下文
+ * @brief 接收过程数据布局
+ * @param profile 两方向字节数与字数
  */
-void EcatDictionary::BindStateQuery(AlStateQuery query, void* context)
+void EcatDictionary::SetProfile(const DeviceProfile& profile)
 {
-	state_query_ = query;
-	state_context_ = context;
+	profile_ = profile;
+
+	data_.input_counter_count  = profile.tx_words;
+	data_.output_counter_count = profile.rx_words;
 }
 
 /**
- * @brief 绑定 0x10F8 的时间戳来源
- * @param source  返回当前时间戳的函数
- * @param context 上下文
+ * @brief 写入同步域的只读投影
+ *
+ * 同步参数的唯一权威持有者是 EcatSync，字典这里只是协议视图，
+ * 每次读 0x1C32/0x1C33 前由上层刷新，避免出现第二份可写真值。
+ *
+ * @param out SM2 参数（0x1C32）
+ * @param in  SM3 参数（0x1C33）
  */
-void EcatDictionary::BindTimestamp(TimestampSource source, void* context)
+void EcatDictionary::ProjectSync(const ObjectData::SyncParameters& out, const ObjectData::SyncParameters& in)
 {
-	timestamp_source_ = source;
-	timestamp_context_ = context;
+	data_.sync_manager_out = out;
+	data_.sync_manager_in  = in;
 }
 
 /**
@@ -300,7 +305,7 @@ const EntryDescription* EcatDictionary::EntryDescriptionOf(const ObjectSlot& slo
 
 		case ObjectCode::Record:
 		default:
-			if (sub_index > slot.sub_count) {
+			if (sub_index > SubCountOf(slot)) {
 				return nullptr;
 			}
 			return &slot.entries[sub_index];
@@ -332,10 +337,8 @@ void* EcatDictionary::DataOf(const ObjectSlot& slot, uint8_t sub_index) const
 			break;
 	}
 
-	// 0x10F8 的值是算出来的，不落在 ObjectData 里；读时从时间戳来源取快照
+	// 0x10F8 的值由调用方按快照传入，不落在 ObjectData 里
 	if (slot.index == index::kTimestamp) {
-		timestamp_value_ = (timestamp_source_ != nullptr) ? timestamp_source_(timestamp_context_) : 0;
-
 		return &timestamp_value_;
 	}
 
@@ -359,9 +362,9 @@ void* EcatDictionary::DataOf(const ObjectSlot& slot, uint8_t sub_index) const
  * @param sub_index 子索引
  * @return 打包后的映射值；越界返回 0
  */
-uint32_t EcatDictionary::MappingEntryOf(DataKind kind, uint8_t sub_index)
+uint32_t EcatDictionary::MappingEntryOf(DataKind kind, uint8_t sub_index) const
 {
-	const uint8_t words = (kind == DataKind::RxPdoMapping) ? kProcessOutputWords : kProcessInputWords;
+	const uint8_t words = (kind == DataKind::RxPdoMapping) ? profile_.rx_words : profile_.tx_words;
 
 	if (sub_index == 0 || sub_index > words) {
 		return 0;
@@ -475,10 +478,10 @@ uint16_t EcatDictionary::SubCountOf(const ObjectSlot& slot) const
 	switch (slot.kind)
 	{
 		case DataKind::RxPdoMapping:
-			return kProcessOutputWords;
+			return profile_.rx_words;
 
 		case DataKind::TxPdoMapping:
-			return kProcessInputWords;
+			return profile_.tx_words;
 
 		case DataKind::RxPdoAssignment:
 		case DataKind::TxPdoAssignment:
@@ -509,29 +512,32 @@ uint16_t EcatDictionary::SubCountOf(const ObjectSlot& slot) const
  * @param flags 条目的访问权限位
  * @return true=允许
  */
-bool EcatDictionary::AllowedInCurrentState(uint16_t flags, bool write) const
+bool EcatDictionary::AllowedInCurrentState(uint16_t flags, bool write, AlState state) const
 {
-	const AlState state = (state_query_ != nullptr) ? state_query_(state_context_) : AlState::Init;
+	// 读位 0x01/0x02/0x04 与写位 0x08/0x10/0x20 各是三个状态的独立权限位，
+	// 直接按状态取对应的那一位，不能把 AlState 的值当位号用。
+	uint16_t allowed = 0;
 
-	// INIT/BOOT 下不允许任何 SDO 访问（SSC 的 nAlStatus 只有 PREOP/SAFEOP/OP 三个位参与比较）
-	if (state != AlState::PreOp && state != AlState::SafeOp && state != AlState::Op) {
-		return false;
+	switch (state)
+	{
+		case AlState::PreOp:
+			allowed = write ? access::kWritePreOp : access::kReadPreOp;
+			break;
+
+		case AlState::SafeOp:
+			allowed = write ? access::kWriteSafeOp : access::kReadSafeOp;
+			break;
+
+		case AlState::Op:
+			allowed = write ? access::kWriteOp : access::kReadOp;
+			break;
+
+		default:
+			// INIT/BOOT 下不允许任何 SDO 访问
+			return false;
 	}
 
-	// SSC OBJ_Read/Write：(ObjAccess << 1) & nAlStatus
-	// 读位 0x01/0x02/0x04、写位 0x08/0x10/0x20 压回后，左移一位正好是 0x02/0x04/0x08
-	uint16_t mask = 0;
-
-	if (write) {
-		mask = static_cast<uint16_t>(flags & (access::kWritePreOp | access::kWriteSafeOp | access::kWriteOp));
-		mask = static_cast<uint16_t>(mask >> 3);
-	} else {
-		mask = static_cast<uint16_t>(flags & (access::kReadPreOp | access::kReadSafeOp | access::kReadOp));
-	}
-
-	const uint16_t state_bits = static_cast<uint16_t>(1U << static_cast<uint8_t>(state));
-
-	return (static_cast<uint16_t>(mask << 1) & state_bits) != 0;
+	return (flags & allowed) != 0;
 }
 
 /**
@@ -544,8 +550,10 @@ bool EcatDictionary::AllowedInCurrentState(uint16_t flags, bool write) const
  * @param written         输出：实际写入的字节数
  * @return 0=成功，否则为 SDO 中止码
  */
-uint32_t EcatDictionary::Read(uint16_t target, uint8_t sub_index, bool complete_access, void* data, uint32_t capacity, uint32_t* written)
+uint32_t EcatDictionary::Read(uint16_t target, uint8_t sub_index, bool complete_access, void* data, uint32_t capacity, uint32_t* written, AlState state, uint64_t timestamp)
 {
+	timestamp_value_ = timestamp;
+
 	const ObjectSlot* slot = Find(target);
 
 	if (slot == nullptr) {
@@ -583,7 +591,7 @@ uint32_t EcatDictionary::Read(uint16_t target, uint8_t sub_index, bool complete_
 		if ((entry->access_flags & access::kRead) == 0) {
 			return sdo::kAbortUnsupportedAccess;
 		}
-		if (!AllowedInCurrentState(entry->access_flags, false)) {
+		if (!AllowedInCurrentState(entry->access_flags, false, state)) {
 			return sdo::kAbortNotInThisState;
 		}
 
@@ -743,8 +751,7 @@ uint32_t EcatDictionary::Read(uint16_t target, uint8_t sub_index, bool complete_
  * @param size            源数据字节数
  * @return 0=成功，否则为 SDO 中止码
  */
-uint32_t EcatDictionary::Write(uint16_t target, uint8_t sub_index, bool complete_access,
-                               const void* data, uint32_t size)
+uint32_t EcatDictionary::Write(uint16_t target, uint8_t sub_index, bool complete_access, const void* data, uint32_t size, AlState state)
 {
 	const ObjectSlot* slot = Find(target);
 
@@ -770,7 +777,7 @@ uint32_t EcatDictionary::Write(uint16_t target, uint8_t sub_index, bool complete
 		if ((entry->access_flags & (access::kWritePreOp | access::kWriteSafeOp | access::kWriteOp)) == 0) {
 			return sdo::kAbortReadOnly;
 		}
-		if (!AllowedInCurrentState(entry->access_flags, true)) {
+		if (!AllowedInCurrentState(entry->access_flags, true, state)) {
 			return sdo::kAbortNotInThisState;
 		}
 
@@ -842,7 +849,7 @@ uint32_t EcatDictionary::Write(uint16_t target, uint8_t sub_index, bool complete
 
 		void* destination = DataOf(*slot, i);
 
-		if (destination != nullptr && (entry->access_flags & (access::kWritePreOp | access::kWriteSafeOp | access::kWriteOp)) != 0 && AllowedInCurrentState(entry->access_flags, true)) 
+		if (destination != nullptr && (entry->access_flags & (access::kWritePreOp | access::kWriteSafeOp | access::kWriteOp)) != 0 && AllowedInCurrentState(entry->access_flags, true, state)) 
 		{
 			const uint8_t* source = static_cast<const uint8_t*>(data) + offset;
 
@@ -901,7 +908,9 @@ uint16_t EcatDictionary::CollectIndices(uint8_t list_type, uint16_t* out, uint16
 		// 该对象至少要有一个子条目的访问位命中掩码
 		bool matched = false;
 
-		for (uint8_t sub = 0; sub <= slot.sub_count && !matched; ++sub) {
+		const uint16_t max_sub = SubCountOf(slot);
+
+		for (uint8_t sub = 0; sub <= max_sub && !matched; ++sub) {
 			const EntryDescription* entry = EntryDescriptionOf(slot, sub);
 
 			if (entry != nullptr && (entry->access_flags & mask) != 0) {

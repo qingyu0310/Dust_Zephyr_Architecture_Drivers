@@ -32,12 +32,11 @@ struct MailboxFrame
 /**
  * @brief 邮箱域
  *
- * 不知道 CoE 存在，只认一个 Dispatcher 回调；用静态缓冲池，不碰堆。
+ * 不知道 CoE 存在，父层借出接收帧并提交处理结果；用静态缓冲池，不碰堆。
  */
 class EcatMailbox final
 {
 public:
-	using Dispatcher = uint8_t (*)(void* context, MailboxFrame* frame);	// 协议分发回调，返回 0 表示已处理
 
 	enum class SubmitResult : uint8_t
 	{
@@ -50,12 +49,13 @@ public:
 	EcatMailbox(const EcatMailbox&) = delete;
 	EcatMailbox& operator=(const EcatMailbox&) = delete;
 
-	void SetDispatcher(Dispatcher dispatcher, void* context);	// 绑定协议分发
+	MailboxFrame* TakeReceived();						// 借出一帧接收数据，由父层处理
+	void CompleteReceived(MailboxFrame* frame, uint8_t code);	// 处理完成：提交应答或回收缓冲
 
 	uint16_t Start(EcatEsc& esc);								// 进入 PREOP：读 SM0/SM1、校验重叠、使能两个通道
 	void Stop(EcatEsc& esc);									// 退出 PREOP：禁用通道、释放缓冲、清队列
 
-	void Service(EcatEsc& esc);									// 线程上下文：处理接收队列、推发送队列、处理重发
+	void Service(EcatEsc& esc);									// 线程上下文：推发送队列、处理重发
 	void Receive(EcatEsc& esc);									// PDI 上下文：主站写满 SM0 后取回报文
 	void OnSendMailboxRead(EcatEsc& esc);						// PDI 上下文：主站读走 SM1，推进下一帧
 
@@ -105,8 +105,6 @@ private:
 	uint8_t read_counter_ 	= 0;									// 邮箱头里的计数器（1~7 循环）
 	uint8_t write_counter_ 	= 0;									// 最近一次收到报文的计数器，用于滤掉重发
 
-	Dispatcher dispatcher_ = nullptr;								// 协议分发回调
-	void*      dispatcher_context_ = nullptr;						// 回调上下文
 };
 
 }

@@ -61,6 +61,7 @@ enum class DataType : uint16_t
  * 位组合有意义，实际语义由 ecat_dictionary 的权限判定函数解释。
  */
 namespace access {
+
 // 位定义照 SSC sdoserv.h，这组值会原样发到 SDO Info，必须与标准一致
 constexpr uint16_t kReadPreOp    = 0x0001;			// 仅 PREOP 可读
 constexpr uint16_t kReadSafeOp   = 0x0002;			// 仅 SAFEOP 可读
@@ -77,6 +78,7 @@ constexpr uint16_t kRxPdoMapping = 0x0040;			// 可作为 RxPDO 映射目标
 constexpr uint16_t kTxPdoMapping = 0x0080;			// 可作为 TxPDO 映射源
 constexpr uint16_t kBackup       = 0x0100;			// 备份参数
 constexpr uint16_t kSettings     = 0x0200;			// 设置参数
+
 }
 
 /**
@@ -117,7 +119,7 @@ struct ObjectEntry
 	const char* name;					// 名称串（多个名字以 '\0' 分隔，末尾 0xFF）
 	void* data;							// 该对象的实际存储
 
-	void* hook_context;			// 前门的上下文
+	void* hook_context;					// 前门的上下文
 
 	/**
 	 * @brief 访问前门（可选）
