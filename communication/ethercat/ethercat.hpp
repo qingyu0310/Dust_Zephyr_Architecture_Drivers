@@ -2,8 +2,8 @@
  * @file ethercat.hpp
  * @author qingyu
  * @brief EtherCAT 从站业务入口（模板门面）
- * @version 2.0
- * @date 2026-11-02
+ * @version 2.1
+ * @date 2026-11-07
  *
  * 收发 PDO 的业务类型由模板参数固定，核心只认字节与字数。
  * 模板成员函数必须对被实例化单元可见，因此实现内联在本文件。
@@ -185,8 +185,21 @@ public:
 	 */
 	void Disable() { device_.Disable(); }
 
-	bool    IsReady() const { return device_.IsReady(); }	// 初始化是否完成
-	AlState State()   const { return device_.State();   }	// 当前 AL 状态
+	bool    IsReady() const { return device_.IsReady(); }					// 初始化是否完成
+	AlState State()   const { return device_.State();   }					// 当前 AL 状态
+
+	uint32_t Sm2Count()  const  { return device_.Sm2Count();  }				// 主站写入 SM2 累计次数
+	uint32_t Sm3Count()  const  { return device_.Sm3Count();  }				// 主站读走 SM3 累计次数
+	uint32_t MaxSm2Gap() const  { return device_.MaxSm2Gap(); }				// 上电以来相邻 SM2 最大间隔（ms）
+	uint32_t ConsumeMaxSm2Gap() { return device_.ConsumeMaxSm2Gap(); }		// 取出并清零本窗口内相邻 SM2 最大间隔（ms）
+
+	/**
+	 * @brief 取出并清零本窗口内 PDI ISR 分段最大耗时
+	 * @param total   整个 OnPdi 最大周期数
+	 * @param consume 读 SM2 最大周期数
+	 * @param publish 写 SM3 最大周期数
+	 */
+	void ConsumePdiTiming(uint32_t* total, uint32_t* consume, uint32_t* publish) { device_.ConsumePdiTiming(total, consume, publish); }
 
 	/**
 	 * @brief 最近一帧主站数据
@@ -200,8 +213,8 @@ public:
 	 */
 	void SetInputs(const Tx& inputs) { inputs_ = inputs; }
 
-	bool RequestFaultReport() { return device_.RequestFaultReport(); }	// 输出保存的首次故障
-	void ClearFaultReport()   { device_.ClearFaultReport(); }			// 清除保存现场，允许保存下一次故障
+	bool RequestFaultReport() { return device_.RequestFaultReport(); }		// 输出保存的首次故障
+	void ClearFaultReport()   { device_.ClearFaultReport(); 		 }		// 清除保存现场，允许保存下一次故障
 
 private:
 	/**

@@ -100,10 +100,10 @@ private:
 	uint16_t status_code_ = al_status::kNoError;		// 当前 AL 状态码
 	bool     error_latch_ = false;						// AL Status 的 0x10 错误位
 
-	bool output_expected_ = false;						// 是否存在输出过程数据（影响超时错误码）
-	bool output_running_ = false;						// 已开输出（OP）
-	bool input_running_  = false;						// 已开输入（SAFEOP 及以上）
-	bool first_outputs_received_ = false;				// 已收到首帧输出
+	bool 	 output_expected_ = false;					// 是否存在输出过程数据（影响超时错误码）
+	bool 	 output_running_  = false;					// 已开输出（OP）
+	bool 	 input_running_   = false;					// 已开输入（SAFEOP 及以上）
+	bool 	 first_outputs_received_ = false;			// 已收到首帧输出
 
 	bool     transition_pending_ = false;				// 在等应用或硬件完成转换
 	AlState  pending_target_ 	 = AlState::Init;		// 待完成转换的目标状态

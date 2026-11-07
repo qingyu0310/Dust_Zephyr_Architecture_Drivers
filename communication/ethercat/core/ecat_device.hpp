@@ -2,8 +2,8 @@
  * @file ecat_device.hpp
  * @author qingyu
  * @brief 从站协议组合根：组合各域、按上下文分发事件
- * @version 0.3
- * @date 2026-11-03
+ * @version 0.4
+ * @date 2026-11-07
  *
  * @copyright Copyright (c) 2026
  */
@@ -69,6 +69,19 @@ public:
 	bool RequestFaultReport() { return diagnostics_.RequestFaultReport(); }				// 请求线程输出保存的首次故障
 	void ClearFaultReport()   { diagnostics_.ClearFaultReport(); }						// 请求线程清除保存现场
 
+	uint32_t Sm2Count()  const { return diagnostics_.Sm2Count();  }						// 主站写入 SM2 累计次数
+	uint32_t Sm3Count()  const { return diagnostics_.Sm3Count();  }						// 主站读走 SM3 累计次数
+	uint32_t MaxSm2Gap() const { return diagnostics_.MaxSm2Gap(); }						// 上电以来相邻 SM2 最大间隔（ms）
+	uint32_t ConsumeMaxSm2Gap() { return diagnostics_.ConsumeMaxSm2Gap(); }				// 取出并清零本窗口内相邻 SM2 最大间隔（ms）
+
+	/**
+	 * @brief 取出并清零本窗口内 PDI ISR 分段最大耗时
+	 * @param total   整个 OnPdi 最大周期数
+	 * @param consume 读 SM2 最大周期数
+	 * @param publish 写 SM3 最大周期数
+	 */
+	void ConsumePdiTiming(uint32_t* total, uint32_t* consume, uint32_t* publish) { diagnostics_.ConsumePdiTiming(total, consume, publish); }
+
 private:
 	/**
 	 * @brief 读取无 AL Control 确认副作用的诊断快照
@@ -118,6 +131,8 @@ private:
 
 	bool     ready_ = false;									// 初始化完成
 	bool     cycle_pending_ = false;							// 有待处理的邮箱事件
+	uint32_t pdi_consume_cycles_ = 0;							// 本拍读 SM2 的周期数（仅 ISR 写）
+	uint32_t pdi_publish_cycles_ = 0;							// 本拍写 SM3 的周期数（仅 ISR 写）
 	uint16_t input_address_ = 0;								// 进 SAFEOP 时验证过的 SM3 地址（SSC nEscAddrInputData）
 	uint16_t output_address_ = 0;								// 进 SAFEOP 时验证过的 SM2 地址（SSC nEscAddrOutputData）
 };

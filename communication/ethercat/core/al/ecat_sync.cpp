@@ -2,8 +2,8 @@
  * @file ecat_sync.cpp
  * @author qingyu
  * @brief 同步与时基实现
- * @version 0.1
- * @date 2026-10-30
+ * @version 0.2
+ * @date 2026-11-07
  *
  * @copyright Copyright (c) 2026
  */
@@ -47,46 +47,48 @@ uint32_t ReadRegister32(EcatEsc& esc, uint16_t address)
  */
 void EcatSync::ResetParameters()
 {
-	out_.sub_count = 32;
-	out_.sync_type = static_cast<uint16_t>(SyncType::FreeRun);
-	out_.cycle_time = 0;
+	out_.sub_count			  = 32;
+	out_.sync_type 			  = static_cast<uint16_t>(SyncType::FreeRun);
+	out_.cycle_time 		  = 0;
 	out_.sync_types_supported = kSyncTypeFreeRunSupp | kSyncTypeTimesVariable | kSyncTypeSynchronSupp | kSyncTypeDcSync0Supp | kSyncTypeDcSync1Supp | kSyncTypeSubcycleSupp;
-	out_.min_cycle_time = kMinProcessCycleTimeNs;
-	out_.calc_and_copy_time = kOutputCalcCopyTimeNs;
-	out_.get_cycle_time = 0;
-	out_.delay_time = kOutputDelayTimeNs;
-	out_.sm_event_missed = 0;
-	out_.cycle_exceeded = 0;
-	out_.sync_error = 0;
+	out_.min_cycle_time 	  = kMinProcessCycleTimeNs;
+	out_.calc_and_copy_time   = kOutputCalcCopyTimeNs;
+	out_.get_cycle_time 	  = 0;
+	out_.delay_time 		  = kOutputDelayTimeNs;
+	out_.sm_event_missed 	  = 0;
+	out_.cycle_exceeded 	  = 0;
+	out_.sync_error 		  = 0;
 
-	in_.sub_count = 32;
-	in_.sync_type = static_cast<uint16_t>(SyncType::FreeRun);
-	in_.cycle_time = out_.cycle_time;
-	in_.sync_types_supported = out_.sync_types_supported;
-	in_.min_cycle_time = kMinProcessCycleTimeNs;
-	in_.calc_and_copy_time = kInputCalcCopyTimeNs;
-	in_.get_cycle_time = 0;
-	in_.delay_time = kInputDelayTimeNs;
-	in_.sm_event_missed = 0;
-	in_.cycle_exceeded = 0;
-	in_.sync_error = 0;
+	in_.sub_count 			  = 32;
+	in_.sync_type 			  = static_cast<uint16_t>(SyncType::FreeRun);
+	in_.cycle_time 			  = out_.cycle_time;
+	in_.sync_types_supported  = out_.sync_types_supported;
+	in_.min_cycle_time 		  = kMinProcessCycleTimeNs;
+	in_.calc_and_copy_time 	  = kInputCalcCopyTimeNs;
+	in_.get_cycle_time 		  = 0;
+	in_.delay_time 	 		  = kInputDelayTimeNs;
+	in_.sm_event_missed  	  = 0;
+	in_.cycle_exceeded 		  = 0;
+	in_.sync_error 			  = 0;
 
-	sync_set_by_user_ = false;
-	dc_sync_active_ = false;
-	dc_running_ = false;
-	sm_running_ = false;
-	sm_sync0_counter_ = 0;
-	sm_sync0_value_ = 0;
-	sync0_wd_counter_ = 0;
-	sync0_wd_value_ = 0;
-	sync1_wd_counter_ = 0;
-	sync1_wd_value_ = 0;
-	latch_input_value_ = 0;
-	latch_input_counter_ = 0;
-	sm_sequence_valid_ = true;
-	timestamp_ = 0;
-	last_dc32_value_ = 0;
-	dc_overrun_counter_ = 0;
+	dc_.sync_set_by_user_     = false;
+	dc_.dc_sync_active_       = false;
+	dc_.dc_running_ 	      = false;
+	dc_.sm_running_ 	      = false;
+
+	sequence_.sm_sync0_counter_ 	= 0;
+	sequence_.sm_sync0_value_ 		= 0;
+	watchdog_.sync0_wd_counter_ 	= 0;
+	watchdog_.sync0_wd_value_ 		= 0;
+	watchdog_.sync1_wd_counter_ 	= 0;
+	watchdog_.sync1_wd_value_ 		= 0;
+	sequence_.latch_input_value_ 	= 0;
+	sequence_.latch_input_counter_ 	= 0;
+	sequence_.sm_sequence_valid_ 	= true;
+
+	time_.timestamp_ 			= 0;
+	time_.last_dc32_value_ 		= 0;
+	time_.dc_overrun_counter_ 	= 0;
 }
 
 /**
@@ -99,8 +101,8 @@ void EcatSync::ResetParameters()
  */
 uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_size)
 {
-	out_size_ = output_size;
-	in_size_  = input_size;
+	config_.out_size_ = output_size;
+	config_.in_size_  = input_size;
 
 	// SSC StartInputHandler：读 0x0420 看门狗时间与 0x0400 分频，算出实际超时（ms）
 	{
@@ -116,12 +118,12 @@ uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_
 				d *= wd;
 				d += 24999U;
 				d /= 25000U;
-				process_wd_value_ = static_cast<uint16_t>(d);
+				config_.process_wd_value_ = static_cast<uint16_t>(d);
 			} else {
-				process_wd_value_ = 0;
+				config_.process_wd_value_ = 0;
 			}
 		} else {
-			process_wd_value_ = 0;
+			config_.process_wd_value_ = 0;
 		}
 	}
 
@@ -148,7 +150,7 @@ uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_
 	}
 
 	// 主站显式写过 0x1C3x:01 就以它为准，否则用 DC 寄存器推导
-	if (sync_set_by_user_) {
+	if (dc_.sync_set_by_user_) {
 		const uint16_t check_out = ValidateSyncType(static_cast<SyncType>(out_.sync_type), out_.sync_types_supported);
 
 		if (check_out != al_status::kNoError) {
@@ -181,7 +183,7 @@ uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_
 		in_.sync_type = sync_in;
 	}
 
-	dc_sync_active_ = (out_.sync_type == static_cast<uint16_t>(SyncType::DcSync0)) || (out_.sync_type == static_cast<uint16_t>(SyncType::DcSync1));
+	dc_.dc_sync_active_ = (out_.sync_type == static_cast<uint16_t>(SyncType::DcSync0)) || (out_.sync_type == static_cast<uint16_t>(SyncType::DcSync1));
 
 	return al_status::kNoError;
 }
@@ -193,22 +195,22 @@ uint16_t EcatSync::PrepareSm(EcatEsc& esc, uint16_t output_size, uint16_t input_
  */
 uint16_t EcatSync::StartSm(EcatEsc& esc)
 {
-	sm_sync0_counter_ = 0;
-	latch_input_counter_ = 0;
-	sync0_wd_counter_ = 0;
-	sync1_wd_counter_ = 0;
-	dc_running_ = false;
-	sm_running_ = false;
-	sm_sequence_valid_ = true;
-	sm_sync0_value_ = 0;
-	sync0_wd_value_ = 0;
-	sync1_wd_value_ = 0;
+	sequence_.sm_sync0_counter_ = 0;
+	sequence_.latch_input_counter_ = 0;
+	watchdog_.sync0_wd_counter_ = 0;
+	watchdog_.sync1_wd_counter_ = 0;
+	dc_.dc_running_ = false;
+	dc_.sm_running_ = false;
+	sequence_.sm_sequence_valid_ = true;
+	sequence_.sm_sync0_value_ = 0;
+	watchdog_.sync0_wd_value_ = 0;
+	watchdog_.sync1_wd_value_ = 0;
 
 	// 输入锁存点：DC 同步在一个 SYNC0 周期内提交，SM 同步由 SM2 事件触发
-	latch_input_value_ = dc_sync_active_ ? 1 : 0;
+	sequence_.latch_input_value_ = dc_.dc_sync_active_ ? 1 : 0;
 
 	// SSC StartInputHandler：按 DC 寄存器装载看门狗阈值与 Sync0 计数
-	if (dc_sync_active_)
+	if (dc_.dc_sync_active_)
 	{
 		const uint32_t control = ReadRegister32(esc, reg::kDcUnitControl);
 		const uint32_t sync0_cycle = ReadRegister32(esc, reg::kDcSync0CycleTime);
@@ -217,21 +219,21 @@ uint16_t EcatSync::StartSm(EcatEsc& esc)
 		// Sync0 看门狗：周期 > 500us 时取 2 个周期，否则固定 1 ms
 		if ((control & dc_control::kSync0Active) != 0 && sync0_cycle != 0)
 		{
-			const uint32_t cycles = sync0_cycle / 100000U;
+			const uint32_t cycles = sync0_cycle / 100000;
 
-			sync0_wd_value_ = (cycles < 5U) ? 1U : static_cast<uint16_t>((cycles * 2U) / 10U);
+			watchdog_.sync0_wd_value_ = (cycles < 5U) ? 1U : static_cast<uint16_t>((cycles * 2U) / 10U);
 		}
 
 		// Sync1 看门狗
 		if ((control & dc_control::kSync1Active) != 0 && sync0_cycle != 0)
 		{
 			if (sync1_cycle < sync0_cycle) {
-				sync1_wd_value_ = sync0_wd_value_;
+				watchdog_.sync1_wd_value_ = watchdog_.sync0_wd_value_;
 			} else {
-				const uint32_t cycles = (sync1_cycle + sync0_cycle) / 100000U;
+				const uint32_t cycles = (sync1_cycle + sync0_cycle) / 100000;
 
-				sync1_wd_value_ = (cycles < 5U) ? 1U : static_cast<uint16_t>((cycles * 2U) / 10U);
-				sync1_wd_value_ = static_cast<uint16_t>(sync1_wd_value_ + sync0_wd_value_ / 2U);
+				watchdog_.sync1_wd_value_ = (cycles < 5U) ? 1U : static_cast<uint16_t>((cycles * 2) / 10);
+				watchdog_.sync1_wd_value_ = static_cast<uint16_t>(watchdog_.sync1_wd_value_ + watchdog_.sync0_wd_value_ / 2);
 			}
 		}
 
@@ -240,22 +242,22 @@ uint16_t EcatSync::StartSm(EcatEsc& esc)
 		{
 			const uint32_t total = sync1_cycle + sync0_cycle;
 
-			sm_sync0_value_ = static_cast<uint16_t>(total / sync0_cycle);
+			sequence_.sm_sync0_value_ = static_cast<uint16_t>(total / sync0_cycle);
 
 			if ((total % sync0_cycle) == 0) {
-				++sm_sync0_value_;
+				++sequence_.sm_sync0_value_;
 			}
 
-			latch_input_value_ = static_cast<uint16_t>(total / sync0_cycle);
+			sequence_.latch_input_value_ = static_cast<uint16_t>(total / sync0_cycle);
 
 			if ((total % sync0_cycle) > 0) {
-				++latch_input_value_;
+				++sequence_.latch_input_value_;
 			}
 		}
 		else if (out_.sync_type == static_cast<uint16_t>(SyncType::DcSync0))
 		{
-			sm_sync0_value_ = 1;
-			latch_input_value_ = 1;
+			sequence_.sm_sync0_value_ = 1;
+			sequence_.latch_input_value_ = 1;
 		}
 	}
 
@@ -267,14 +269,14 @@ uint16_t EcatSync::StartSm(EcatEsc& esc)
  */
 void EcatSync::StopSm()
 {
-	latch_input_value_ = 0;
-	latch_input_counter_ = 0;
-	sm_sync0_counter_ = 0;
-	sync0_wd_counter_ = 0;
-	sync1_wd_counter_ = 0;
-	dc_running_ = false;
-	sm_running_ = false;
-	sm_sequence_valid_ = true;
+	sequence_.latch_input_value_ = 0;
+	sequence_.latch_input_counter_ = 0;
+	sequence_.sm_sync0_counter_ = 0;
+	watchdog_.sync0_wd_counter_ = 0;
+	watchdog_.sync1_wd_counter_ = 0;
+	dc_.dc_running_ = false;
+	dc_.sm_running_ = false;
+	sequence_.sm_sequence_valid_ = true;
 }
 
 /**
@@ -286,36 +288,38 @@ EcatSync::WatchdogResult EcatSync::Tick(EcatEsc& esc)
 {
 	(void)esc;
 
-	if (!dc_sync_active_) {
+	if (!dc_.dc_sync_active_) {
 		return WatchdogResult::Ok;
 	}
 
-	if (sync0_wd_value_ > 0) {
-		if (sync0_wd_counter_ >= sync0_wd_value_) {
-			dc_running_ = false;
-		} else if (sync0_wd_counter_ < sync0_wd_value_) {
-			++sync0_wd_counter_;
+	if (watchdog_.sync0_wd_value_ > 0)
+	{
+		if (watchdog_.sync0_wd_counter_ >= watchdog_.sync0_wd_value_) {
+			dc_.dc_running_ = false;
+		} else if (watchdog_.sync0_wd_counter_ < watchdog_.sync0_wd_value_) {
+			++watchdog_.sync0_wd_counter_;
 		}
 	}
-	dc_running_ = (sync0_wd_value_ == 0) || (sync0_wd_counter_ < sync0_wd_value_);
+	dc_.dc_running_ = (watchdog_.sync0_wd_value_ == 0) || (watchdog_.sync0_wd_counter_ < watchdog_.sync0_wd_value_);
 
-	if (dc_running_ && sync1_wd_value_ > 0) {
-		if (sync1_wd_counter_ < sync1_wd_value_) {
-			++sync1_wd_counter_;
+	if (dc_.dc_running_ && watchdog_.sync1_wd_value_ > 0)
+	{
+		if (watchdog_.sync1_wd_counter_ < watchdog_.sync1_wd_value_) {
+			++watchdog_.sync1_wd_counter_;
 		} else {
-			dc_running_ = false;
+			dc_.dc_running_ = false;
 		}
 	}
 
-	if (dc_running_) {
+	if (dc_.dc_running_) {
 		// 同步错误上限来自 0x10F1:02，0 表示不限制
-		sm_sequence_valid_ = (sync_error_limit_ == 0) || (out_.sm_event_missed < sync_error_limit_);
+		sequence_.sm_sequence_valid_ = (config_.sync_error_limit_ == 0) || (out_.sm_event_missed < config_.sync_error_limit_);
 	} else {
-		sm_sequence_valid_ = false;
+		sequence_.sm_sequence_valid_ = false;
 		return WatchdogResult::SyncTimeout;
 	}
 
-	if (!sm_sequence_valid_) {
+	if (!sequence_.sm_sequence_valid_) {
 		return WatchdogResult::SyncTimeout;
 	}
 	return WatchdogResult::Ok;
@@ -327,24 +331,27 @@ EcatSync::WatchdogResult EcatSync::Tick(EcatEsc& esc)
  */
 void EcatSync::UpdateTimestamp(EcatEsc& esc)
 {
-	if (dc_64bit_) {
+	if (time_.dc_64bit_)
+	{
 		// DC 单位是 64 位，整读 8 字节
 		uint8_t bytes[8] = {};
 
 		esc.Read(reg::kSystemTime, bytes, sizeof(bytes));
-		timestamp_ = wire::ReadLe64(bytes, 0);
-	} else {
+		time_.timestamp_ = wire::ReadLe64(bytes, 0);
+	}
+	else
+	{
 		// DC 单位是 32 位，只更新低 32 位并处理回绕
 		const uint32_t low = ReadRegister32(esc, reg::kSystemTime);
 
-		timestamp_ = (timestamp_ & 0xFFFFFFFF00000000ULL) | low;
+		time_.timestamp_ = (time_.timestamp_ & 0xFFFFFFFF00000000ULL) | low;
 
-		if (low < last_dc32_value_) {
-			timestamp_ += 0x0000000100000000ULL;
+		if (low < time_.last_dc32_value_) {
+			time_.timestamp_ += 0x0000000100000000ULL;
 		}
-		last_dc32_value_ = low;
+		time_.last_dc32_value_ = low;
 	}
-	dc_overrun_counter_ = 0;
+	time_.dc_overrun_counter_ = 0;
 }
 
 /**
@@ -352,10 +359,10 @@ void EcatSync::UpdateTimestamp(EcatEsc& esc)
  */
 void EcatSync::OnProcessOutput()
 {
-	sm_running_ = true;
+	dc_.sm_running_ = true;
 
-	if (dc_sync_active_ && dc_running_) {
-		sm_sync0_counter_ = 0;
+	if (dc_.dc_sync_active_ && dc_.dc_running_) {
+		sequence_.sm_sync0_counter_ = 0;
 	}
 
 	if (out_.sm_event_missed > 0) {
@@ -371,47 +378,51 @@ void EcatSync::OnProcessOutput()
  */
 bool EcatSync::OnSync0(bool* input_pending)
 {
-	sync0_wd_counter_ = 0;
-	dc_running_ = true;
+	watchdog_.sync0_wd_counter_ = 0;
+	dc_.dc_running_ = true;
 
 	if (input_pending != nullptr) {
 		*input_pending = false;
 	}
 
-	if (!dc_sync_active_) {
+	if (!dc_.dc_sync_active_) {
 		return false;
 	}
 
 	bool pending = false;
 
 	// 输入锁存：在一个 SYNC0 周期里数到指定次数才提交
-	if (latch_input_value_ > 0) {
-		if (latch_input_counter_ < latch_input_value_) {
-			++latch_input_counter_;
+	if (sequence_.latch_input_value_ > 0)
+	{
+		if (sequence_.latch_input_counter_ < sequence_.latch_input_value_) {
+			++sequence_.latch_input_counter_;
 		}
-		if (latch_input_counter_ == latch_input_value_) {
+		if (sequence_.latch_input_counter_ == sequence_.latch_input_value_) {
 			pending = true;
 		}
 	}
 
 	// SM/Sync0 序列计数：一个 SM 周期内 SYNC0 过多时事件丢失计数 +3
 	// SSC：上限判据用 0x10F1:02 的 sync_error_limit_
-	if (sm_sync0_value_ > 0) {
-		if (sm_sync0_counter_ > sm_sync0_value_) {
-			if (out_size_ > 0 && out_.sm_event_missed <= sync_error_limit_) {
+	if (sequence_.sm_sync0_value_ > 0)
+	{
+		if (sequence_.sm_sync0_counter_ > sequence_.sm_sync0_value_)
+		{
+			if (config_.out_size_ > 0 && out_.sm_event_missed <= config_.sync_error_limit_) {
 				out_.sm_event_missed = static_cast<uint16_t>(out_.sm_event_missed + 3U);
 			}
-			if (in_size_ > 0 && out_size_ == 0 && in_.sm_event_missed <= sync_error_limit_) {
+
+			if (config_.in_size_ > 0 && config_.out_size_ == 0 && in_.sm_event_missed <= config_.sync_error_limit_) {
 				in_.sm_event_missed = static_cast<uint16_t>(in_.sm_event_missed + 3U);
 			}
 		}
-		if (sm_sync0_counter_ <= sm_sync0_value_) {
-			++sm_sync0_counter_;
+		if (sequence_.sm_sync0_counter_ <= sequence_.sm_sync0_value_) {
+			++sequence_.sm_sync0_counter_;
 		}
 	}
 
-	if (pending && latch_input_value_ == 1) {
-		latch_input_counter_ = 0;
+	if (pending && sequence_.latch_input_value_ == 1) {
+		sequence_.latch_input_counter_ = 0;
 	}
 
 	if (input_pending != nullptr) {
@@ -425,8 +436,8 @@ bool EcatSync::OnSync0(bool* input_pending)
  */
 void EcatSync::OnSync1()
 {
-	sync1_wd_counter_ = 0;
-	latch_input_counter_ = 0;
+	watchdog_.sync1_wd_counter_ = 0;
+	sequence_.latch_input_counter_ = 0;
 }
 
 /**
@@ -435,8 +446,8 @@ void EcatSync::OnSync1()
 void EcatSync::UpdateErrorStatus()
 {
 	// SSC COE_UpdateSyncErrorStatus：上限来自 0x10F1:02（sync_error_limit_）
-	out_.sync_error = (out_.cycle_exceeded > 0 || out_.sm_event_missed > sync_error_limit_) ? 1U : 0U;
-	in_.sync_error = (in_.cycle_exceeded > 0 || in_.sm_event_missed > sync_error_limit_) ? 1U : 0U;
+	out_.sync_error = (out_.cycle_exceeded > 0 || out_.sm_event_missed > config_.sync_error_limit_) ? 1U : 0U;
+	in_.sync_error  = (in_.cycle_exceeded  > 0 || in_.sm_event_missed > config_.sync_error_limit_)  ? 1U : 0U;
 }
 
 /**

@@ -2,8 +2,8 @@
  * @file ecat_device.cpp
  * @author qingyu
  * @brief 从站协议组合根实现
- * @version 0.3
- * @date 2026-11-03
+ * @version 0.4
+ * @date 2026-11-07
  *
  * @copyright Copyright (c) 2026
  */
@@ -234,7 +234,14 @@ void EcatDevice::OnPdi()
 		return;
 	}
 
+	const uint32_t begin = k_cycle_get_32();
+
+	pdi_consume_cycles_ = 0;
+	pdi_publish_cycles_ = 0;
+
 	HandleAlEvents(esc_->ReadAlEvent());
+
+	diagnostics_.OnPdiTiming(k_cycle_get_32() - begin, pdi_consume_cycles_, pdi_publish_cycles_);
 }
 
 /**
@@ -367,7 +374,8 @@ void EcatDevice::OnEscEvent(void* context, EcatEvent event)
 void EcatDevice::HandleAlEvents(uint16_t events)
 {
 	// AL Control：读 0x0120 即确认，必须整 32 位读
-	if ((events & al_event::kAlControl) != 0) {
+	if ((events & al_event::kAlControl) != 0) 
+	{
 		uint8_t control[4] = {};
 
 		esc_->Read(reg::kAlControl, control, sizeof(control));
@@ -442,8 +450,23 @@ void EcatDevice::HandlePdiEvents(uint16_t events)
 
 		if (state_machine_.IsOutputRunning())
 		{
+			// 首次进入输出运行时打印 SM2/SM3 实际数据地址，用于核对 PDRAM 快路径条件
+			static bool s_address_logged = false;
+
+			if (!s_address_logged)
+			{
+				const SyncManagerRegisters in_registers = ReadSyncManager(*esc_, sync_manager::kProcessIn);
+
+				DUST_LOG_INF("ecat pdo addr: SM2=0x%04x len=%u SM3=0x%04x len=%u", static_cast<unsigned>(registers.Address()), static_cast<unsigned>(registers.Length()), static_cast<unsigned>(in_registers.Address()), static_cast<unsigned>(in_registers.Length()));
+				s_address_logged = true;
+			}
+
+			const uint32_t consume_begin = k_cycle_get_32();
+
 			process_data_.ConsumeOutputs(*esc_, registers.Address());
 			sync_.OnProcessOutput();
+
+			pdi_consume_cycles_ = k_cycle_get_32() - consume_begin;
 		} else {
 			// 非 OP 下也要承认事件，否则 ESC 不再产生下次中断
 			AcknowledgeSyncManagerArea(*esc_, registers.Address(), process_data_.Layout().rx_size);
@@ -454,8 +477,11 @@ void EcatDevice::HandlePdiEvents(uint16_t events)
 		if (state_machine_.IsInputRunning() && process_data_.Layout().tx_size > 0 && sync_.IsInputSmSynchron())
 		{
 			const SyncManagerRegisters in_registers = ReadSyncManager(*esc_, sync_manager::kProcessIn);
+			const uint32_t publish_begin = k_cycle_get_32();
 
 			process_data_.PublishInputs(*esc_, in_registers.Address());
+
+			pdi_publish_cycles_ = k_cycle_get_32() - publish_begin;
 		}
 	}
 

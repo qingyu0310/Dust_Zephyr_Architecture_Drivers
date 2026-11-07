@@ -148,7 +148,7 @@ void AcknowledgeSyncManagerArea(EcatEsc& esc, uint16_t address, uint16_t length)
 
 	esc.Read(address, scratch, sizeof(scratch));
 
-	if (length >= sizeof(scratch) * 2U) {
+	if (length >= sizeof(scratch) * 2) {
 		esc.Read(static_cast<uint16_t>(address + length - sizeof(scratch)), scratch, sizeof(scratch));
 	}
 }

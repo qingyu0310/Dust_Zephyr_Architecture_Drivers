@@ -15,6 +15,7 @@
 #include "spec/ecat_application_objects.hpp"
 #include "spec/ecat_limits.hpp"
 #include "spec/ecat_object.hpp"
+#include "log.hpp"
 
 namespace ecat {
 
@@ -87,6 +88,8 @@ uint16_t EcatProcessData::Configure()
 	layout_.rx_size = output_bytes;
 	layout_.tx_size = input_bytes;
 
+	DUST_LOG_ERR("ecat layout: rx_words=%u tx_words=%u rx_size=%u tx_size=%u", static_cast<unsigned>(profile_.rx_words), static_cast<unsigned>(profile_.tx_words), static_cast<unsigned>(layout_.rx_size), static_cast<unsigned>(layout_.tx_size));
+
 	return al_status::kNoError;
 }
 
@@ -143,7 +146,15 @@ uint16_t EcatProcessData::ValidateAreas(uint16_t sm2_area, uint16_t sm3_area, ui
  */
 void EcatProcessData::ConsumeOutputs(EcatEsc& esc, uint16_t address)
 {
-	if (layout_.rx_size == 0) {
+	if (layout_.rx_size == 0)
+	{
+		static bool s_zero_logged = false;
+
+		if (!s_zero_logged)
+		{
+			DUST_LOG_ERR("ecat consume: rx_size=0, PDO read skipped");
+			s_zero_logged = true;
+		}
 		return;
 	}
 
