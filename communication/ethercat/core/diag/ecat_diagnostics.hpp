@@ -13,7 +13,6 @@
 #pragma once
 
 #include <cstdint>
-#include <zephyr/irq.h>
 #include <zephyr/sys/atomic.h>
 #include "interface/ecat_esc.hpp"
 
@@ -95,61 +94,6 @@ public:
 	uint32_t MaxSm2Gap() const { return static_cast<uint32_t>(atomic_get(&max_sm2_gap_)); }		// 相邻 SM2 最大间隔
 
 	/**
-	 * @brief 取出并清零本窗口内相邻 SM2 最大间隔
-	 * @return 自上次取走以来相邻 SM2 的最大间隔（ms）
-	 */
-	uint32_t ConsumeMaxSm2Gap()
-	{
-		const unsigned key = irq_lock();
-		const uint32_t gap = static_cast<uint32_t>(atomic_get(&max_sm2_gap_));
-
-		atomic_set(&max_sm2_gap_, 0);
-		irq_unlock(key);
-
-		return gap;
-	}
-
-	/**
-	 * @brief PDI ISR 单次耗时记录
-	 * @param total    整个 OnPdi 的周期数
-	 * @param consume  读 SM2 的周期数
-	 * @param publish  写 SM3 的周期数
-	 */
-	void OnPdiTiming(uint32_t total, uint32_t consume, uint32_t publish)
-	{
-		if (total > pdi_max_cycles_) {
-			pdi_max_cycles_ = total;
-		}
-		if (consume > consume_max_cycles_) {
-			consume_max_cycles_ = consume;
-		}
-		if (publish > publish_max_cycles_) {
-			publish_max_cycles_ = publish;
-		}
-	}
-
-	/**
-	 * @brief 取出并清零本窗口内 ISR 分段最大耗时
-	 * @param total   输出：整个 OnPdi 最大周期数
-	 * @param consume 输出：读 SM2 最大周期数
-	 * @param publish 输出：写 SM3 最大周期数
-	 */
-	void ConsumePdiTiming(uint32_t* total, uint32_t* consume, uint32_t* publish)
-	{
-		const unsigned key = irq_lock();
-
-		*total   = pdi_max_cycles_;
-		*consume = consume_max_cycles_;
-		*publish = publish_max_cycles_;
-
-		pdi_max_cycles_     = 0;
-		consume_max_cycles_ = 0;
-		publish_max_cycles_ = 0;
-
-		irq_unlock(key);
-	}
-
-	/**
 	 * @brief 距最近一次 SM2 的毫秒数
 	 * @param now_ms 当前毫秒
 	 * @return 从未收到 SM2 时返回 0
@@ -178,10 +122,6 @@ private:
 	atomic_t tick_count_  = ATOMIC_INIT(0);					// 1 ms 入口累计
 	atomic_t last_sm2_ms_ = ATOMIC_INIT(0);					// 最近一次 SM2 的毫秒
 	atomic_t max_sm2_gap_ = ATOMIC_INIT(0);					// 相邻 SM2 最大间隔
-
-	uint32_t pdi_max_cycles_     = 0;					// 整个 OnPdi 最大周期数（仅 ISR 写）
-	uint32_t consume_max_cycles_ = 0;					// 读 SM2 最大周期数（仅 ISR 写）
-	uint32_t publish_max_cycles_ = 0;					// 写 SM3 最大周期数（仅 ISR 写）
 
 	uint32_t last_poll_ms_      = 0;						// 上次 Poll 的时刻
 	uint32_t max_poll_gap_ms_   = 0;						// 本窗口内最大轮询间隔

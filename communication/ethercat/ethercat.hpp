@@ -188,18 +188,8 @@ public:
 	bool    IsReady() const { return device_.IsReady(); }					// 初始化是否完成
 	AlState State()   const { return device_.State();   }					// 当前 AL 状态
 
-	uint32_t Sm2Count()  const  { return device_.Sm2Count();  }				// 主站写入 SM2 累计次数
-	uint32_t Sm3Count()  const  { return device_.Sm3Count();  }				// 主站读走 SM3 累计次数
-	uint32_t MaxSm2Gap() const  { return device_.MaxSm2Gap(); }				// 上电以来相邻 SM2 最大间隔（ms）
-	uint32_t ConsumeMaxSm2Gap() { return device_.ConsumeMaxSm2Gap(); }		// 取出并清零本窗口内相邻 SM2 最大间隔（ms）
-
-	/**
-	 * @brief 取出并清零本窗口内 PDI ISR 分段最大耗时
-	 * @param total   整个 OnPdi 最大周期数
-	 * @param consume 读 SM2 最大周期数
-	 * @param publish 写 SM3 最大周期数
-	 */
-	void ConsumePdiTiming(uint32_t* total, uint32_t* consume, uint32_t* publish) { device_.ConsumePdiTiming(total, consume, publish); }
+	uint32_t Sm2Count() const { return device_.Sm2Count(); }				// 主站写入 SM2 累计次数
+	uint32_t Sm3Count() const { return device_.Sm3Count(); }				// 主站读走 SM3 累计次数
 
 	/**
 	 * @brief 最近一帧主站数据
