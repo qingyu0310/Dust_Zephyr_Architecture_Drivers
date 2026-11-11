@@ -40,6 +40,11 @@ if(CONFIG_DUST_DEV_PWM)
     target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/pwm)
 endif()
 
+# 编码器设备接口（C++ 薄包装，底层实现在子树 drivers/encoder/encoder.c）
+if(CONFIG_DUST_DEV_ENCODER)
+    target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/encoder)
+endif()
+
 # USB 协议栈（并入 app target，与 can/uart 同构：Kconfig 门禁 → 编译期装配；多板卡 HAL 按门禁隔离）
 if(CONFIG_DUST_USB_DEVICE_STACK)
     target_sources(app PRIVATE

@@ -104,6 +104,13 @@ config DUST_DEV_PWM
     help
         Enable the lightweight PWM wrapper in drivers/device/pwm.
 
+config DUST_DEV_ENCODER
+    default n
+    bool "Enable encoder device wrapper"
+    help
+        Enable the encoder C++ wrapper in drivers/device/encoder.
+        底层实现由子树 drivers/Kconfig 的 DUST_ENCODER 提供。
+
 # SII 介质：板上有没有 I2C EEPROM 由这里决定，板卡 conf 不写
 config DUST_ECAT_SII_EEPROM
     bool "板上 I2C EEPROM（CAT24C128 等）"
