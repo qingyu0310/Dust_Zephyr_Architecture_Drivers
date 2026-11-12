@@ -15,34 +15,41 @@
 #include "log.hpp"
 
 namespace {
-	// PHY ID（PHYID2 低 4 位是版本号，比较时屏蔽）
-	constexpr uint32_t kIdMask = 0xFFFFFFF0U;
-	constexpr uint32_t kId     = 0x001CC810U;
 
-	// 私有页寄存器
-	constexpr uint8_t kPageSelReg = 31U;
-	constexpr uint8_t kPageItf    = 7U;     // 接口模式页
-	constexpr uint8_t kRmsrReg    = 16U;    // page7 reg16 bit3: 0=MII 1=RMII
-	constexpr uint8_t kPageEee    = 4U;     // EEE 能力页
-	constexpr uint8_t kEeeReg     = 16U;    // page4 reg16 bit13/12 = EEE
-	constexpr uint8_t kPowerReg   = 24U;    // page0 reg24 bit15 = 掉电省电
+// PHY ID（PHYID2 低 4 位是版本号，比较时屏蔽）
+constexpr uint32_t kIdMask = 0xFFFFFFF0U;
+constexpr uint32_t kId     = 0x001CC810U;
 
-	/** 速率档位在 BMCR 中的编码（bit13 / bit6） */
-	uint16_t SpeedBits(EcatPhySpeed speed)
+// 私有页寄存器
+constexpr uint8_t kPageSelReg = 31U;
+constexpr uint8_t kPageItf    = 7U;     // 接口模式页
+constexpr uint8_t kRmsrReg    = 16U;    // page7 reg16 bit3: 0=MII 1=RMII
+constexpr uint8_t kPageEee    = 4U;     // EEE 能力页
+constexpr uint8_t kEeeReg     = 16U;    // page4 reg16 bit13/12 = EEE
+constexpr uint8_t kPowerReg   = 24U;    // page0 reg24 bit15 = 掉电省电
+
+/**
+ * @brief 速率档位在 BMCR 中的编码（bit13 / bit6）
+ * 
+ * @param speed 
+ * @return uint16_t 
+ */
+uint16_t SpeedBits(EcatPhySpeed speed)
+{
+	switch (speed) 
 	{
-		switch (speed) 
-		{
-			case EcatPhySpeed::Mbps1000:
-				return ecat_phy_bmcr::kSpeedLsb | ecat_phy_bmcr::kSpeedMsb;
+		case EcatPhySpeed::Mbps1000:
+			return ecat_phy_bmcr::kSpeedLsb | ecat_phy_bmcr::kSpeedMsb;
 
-			case EcatPhySpeed::Mbps100:
-				return ecat_phy_bmcr::kSpeedLsb;
+		case EcatPhySpeed::Mbps100:
+			return ecat_phy_bmcr::kSpeedLsb;
 
-			case EcatPhySpeed::Mbps10:
-			default:
-				return 0U;
-		}
+		case EcatPhySpeed::Mbps10:
+		default:
+			return 0U;
 	}
+}
+
 }
 
 /**

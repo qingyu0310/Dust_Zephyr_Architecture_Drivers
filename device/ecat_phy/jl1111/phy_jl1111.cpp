@@ -17,41 +17,43 @@
 #include "log.hpp"
 
 namespace {
-	// PHY ID：PHYID1 = 0x937C，PHYID2[15:10] = 0x10
-	constexpr uint16_t kId1    = 0x937CU;
-	constexpr uint8_t  kId2Oui = 0x10U;
 
-	// 私有页寄存器（page select 在 reg31）
-	constexpr uint8_t kPageSelReg = 31U;
-	constexpr uint8_t kPageLed    = 7U;     // LED 模式页
-	constexpr uint8_t kLedReg     = 19U;    // page7 reg19 = LED 模式值
-	constexpr uint8_t kPageItf    = 7U;     // 接口模式页
-	constexpr uint8_t kRmsrReg    = 16U;    // page7 reg16 bit3: 0=MII 1=RMII
-	constexpr uint8_t kPageAddr   = 128U;   // 地址页
-	constexpr uint8_t kAddrReg    = 19U;    // page128 reg19 = (addr<<5)|0x1F
+// PHY ID：PHYID1 = 0x937C，PHYID2[15:10] = 0x10
+constexpr uint16_t kId1    = 0x937C;
+constexpr uint8_t  kId2Oui = 0x10;
 
-	// 关广播定址时写入的低 5 位固定值
-	constexpr uint16_t kAddrRegLow = 0x1FU;
+// 私有页寄存器（page select 在 reg31）
+constexpr uint8_t kPageSelReg = 31;
+constexpr uint8_t kPageLed    = 7;     // LED 模式页
+constexpr uint8_t kLedReg     = 19;    // page7 reg19 = LED 模式值
+constexpr uint8_t kPageItf    = 7;     // 接口模式页
+constexpr uint8_t kRmsrReg    = 16;    // page7 reg16 bit3: 0=MII 1=RMII
+constexpr uint8_t kPageAddr   = 128;   // 地址页
+constexpr uint8_t kAddrReg    = 19;    // page128 reg19 = (addr<<5)|0x1F
 
-	/**
-	 * @brief 速率档位在 BMCR 中的编码（bit13 / bit6）
-	 * 
-	 * @param speed 
-	 * @return uint16_t 
-	 */
-	uint16_t SpeedBits(EcatPhySpeed speed)
+// 关广播定址时写入的低 5 位固定值
+constexpr uint16_t kAddrRegLow = 0x1F;
+
+/**
+ * @brief 速率档位在 BMCR 中的编码（bit13 / bit6）
+ * 
+ * @param speed 
+ * @return uint16_t 
+ */
+uint16_t SpeedBits(EcatPhySpeed speed)
+{
+	switch (speed)
 	{
-		switch (speed)
-		{
-			case EcatPhySpeed::Mbps1000:
-				return ecat_phy_bmcr::kSpeedLsb | ecat_phy_bmcr::kSpeedMsb;
-			case EcatPhySpeed::Mbps100:
-				return ecat_phy_bmcr::kSpeedLsb;
-			case EcatPhySpeed::Mbps10:
-			default:
-				return 0U;
-		}
+		case EcatPhySpeed::Mbps1000:
+			return ecat_phy_bmcr::kSpeedLsb | ecat_phy_bmcr::kSpeedMsb;
+		case EcatPhySpeed::Mbps100:
+			return ecat_phy_bmcr::kSpeedLsb;
+		case EcatPhySpeed::Mbps10:
+		default:
+			return 0U;
 	}
+}
+
 }
 
 /**

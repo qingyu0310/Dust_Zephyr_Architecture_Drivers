@@ -14,13 +14,15 @@
 
 #include <zephyr/kernel.h>
 
-#include "interface/ecat_esc.hpp"
+#include "ecat_esc.hpp"
 #include "ecat_phy_common.hpp"
 #include "log.hpp"
 
 namespace {
-	// 复位最长等待（ms），超时按失败处理
-	constexpr uint32_t kResetTimeoutMs = 100U;
+
+// 复位最长等待（ms），超时按失败处理
+constexpr uint32_t kResetTimeoutMs = 100;
+
 }
 
 /**

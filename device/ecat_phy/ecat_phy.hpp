@@ -15,8 +15,8 @@
 
 #include <stdint.h>
 
-#include "interface/ecat_esc.hpp"
-#include "interface/ecat_types.hpp"
+#include "ecat_esc.hpp"
+#include "ecat_types.hpp"
 
 /**
  * @brief PHY 配置，全部来自业务线程的组装代码

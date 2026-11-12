@@ -15,25 +15,32 @@
 #include "log.hpp"
 
 namespace {
-	// NXP 100BASE-T1 PHY 家族 OUI 高 16 位（TJA1101 / TJA1101B）
-	constexpr uint16_t kId1 = 0x001BU;
 
-	/** 速率档位在 BMCR 中的编码（bit13 / bit6） */
-	uint16_t SpeedBits(EcatPhySpeed speed)
+// NXP 100BASE-T1 PHY 家族 OUI 高 16 位（TJA1101 / TJA1101B）
+constexpr uint16_t kId1 = 0x001BU;
+
+/**
+ * @brief 速率档位在 BMCR 中的编码（bit13 / bit6）
+ * 
+ * @param speed 
+ * @return uint16_t 
+ */
+uint16_t SpeedBits(EcatPhySpeed speed)
+{
+	switch (speed) 
 	{
-		switch (speed) 
-		{
-			case EcatPhySpeed::Mbps1000:
-				return ecat_phy_bmcr::kSpeedLsb | ecat_phy_bmcr::kSpeedMsb;
+		case EcatPhySpeed::Mbps1000:
+			return ecat_phy_bmcr::kSpeedLsb | ecat_phy_bmcr::kSpeedMsb;
 
-			case EcatPhySpeed::Mbps100:
-				return ecat_phy_bmcr::kSpeedLsb;
+		case EcatPhySpeed::Mbps100:
+			return ecat_phy_bmcr::kSpeedLsb;
 
-			case EcatPhySpeed::Mbps10:
-			default:
-				return 0U;
-		}
+		case EcatPhySpeed::Mbps10:
+		default:
+			return 0U;
 	}
+}
+
 }
 
 /**
