@@ -9,6 +9,17 @@ config DUST_COM_CAN
     help
         Enable the CAN driver. Board DTS must provide the CAN controller node.
 
+config DUST_COM_ETHERCAT
+    default n
+    bool "EtherCAT slave"
+    help
+        Enable the EtherCAT slave driver: 门面在 drivers/communication/ethercat，
+        协议栈在 midlayer/ethercat/core。
+        C++ 实现，行为派生自倍福 SSC 5.13；派生范围与来源见
+        midlayer/ethercat/core/LICENSE-BECKHOFF.md，
+        该部分不受本项目 Apache-2.0 覆盖。
+        硬件实现（ESC 寄存器、IRQ、PHY、SII）由各芯片提供，本层不含任何厂商代码。
+
 config DUST_COM_RS485
     default n
     bool "RS485 half-duplex driver"
@@ -34,6 +45,16 @@ config DUST_COM_UART_DMA
     select DUST_BUF_BIPBUF
     help
         Enable the asynchronous DMA UART driver.
+
+config DUST_COM_USB
+    default n
+    bool "USB CDC ACM driver"
+    select DUST_BUF_BIPBUF
+    select DUST_USB_DEVICE_STACK
+    select DYNAMIC_INTERRUPTS
+    help
+        Enable the C++ USB device CDC ACM stream: 门面在 drivers/communication/stream/usb，
+        协议栈在 midlayer/usb/core。
 
 config DUST_DEV_ECAT_PHY_JL1111
     default n

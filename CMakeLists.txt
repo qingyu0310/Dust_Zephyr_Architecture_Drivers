@@ -45,8 +45,28 @@ if(CONFIG_DUST_DEV_ENCODER)
     target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/encoder)
 endif()
 
-# USB 协议栈与 EtherCAT 协议栈已迁到 midlayer/（user_midlayer 模块）。
-# 本文件只保留驱动：can / spi / stream(uart, rs485, stream.hpp) / device。
+# USB 门面（顶层封装 Usb : Stream，上层业务直接用；协议栈在 midlayer/usb/core/）
+if(CONFIG_DUST_COM_USB)
+    target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/usb.cpp)
+    target_include_directories(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/uart
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream
+        ${CMAKE_CURRENT_SOURCE_DIR}/../midlayer/usb/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../zephyr/contract
+    )
+endif()
+
+# EtherCAT 门面（顶层模板 EthercatSlave<Rx,Tx>，上层业务直接用；协议栈在 midlayer/ethercat/core/）
+if(CONFIG_DUST_COM_ETHERCAT)
+    target_include_directories(app PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat
+        ${CMAKE_CURRENT_SOURCE_DIR}/../midlayer/ethercat/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../zephyr/contract
+    )
+endif()
+
+# 驱动：can / spi / stream(uart, rs485, stream.hpp) / device。
 
 # EtherCAT PHY 设备模块（与 gpio/pwm 同层）
 #
