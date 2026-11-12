@@ -8,6 +8,9 @@
  * UsbHal 是 USB device core 调用硬件的唯一接口。
  * 具体 MCU 通过继承此类实现：UsbHalHpm、UsbHalStm32、UsbHalCherry（迁移期）。
  *
+ * **本文件属于共享契约层**（见 `contract/README.md`）：底层实现可依赖它，
+ * 上层协议栈可依赖它。P2 步 14 会迁到 `zephyr/contract/`。
+ *
  * @copyright Copyright (c) 2026
  */
 

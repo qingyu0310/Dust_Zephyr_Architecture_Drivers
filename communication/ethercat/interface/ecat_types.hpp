@@ -8,6 +8,9 @@
  * 只放 EtherCAT 规范（ETG.1000）定义的数据类型。
  * 不放寄存器、不放 SSC 结构体、不放任何 hpm_ 前缀符号。
  *
+ * **本文件属于共享契约层**（见 `contract/README.md`）：底层实现可依赖它，
+ * 上层协议栈可依赖它。P2 步 14 会迁到 `zephyr/contract/`。
+ *
  * @copyright Copyright (c) 2026
  */
 

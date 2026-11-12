@@ -240,7 +240,7 @@ private:
 	EcatEsc*   esc_ = nullptr;					// ESC 硬件，Init 时绑定
 	EcatPhy*   phys_[kPortCount] = {};			// 各端口 PHY，按真实端口下标，空口为 nullptr
 	uint8_t    phy_count_ = 0;					// 实际挂接的 PHY 数
-	EcatDevice device_ {};						// 协议栈组合根
+	EcatDevice device_  {};						// 协议栈组合根
 	Rx         outputs_ {};						// 主站→从站业务镜像
 	Tx         inputs_  {};						// 从站→主站业务镜像
 	int64_t    next_link_poll_ = 0;				// 下次链路刷新时刻（ms）

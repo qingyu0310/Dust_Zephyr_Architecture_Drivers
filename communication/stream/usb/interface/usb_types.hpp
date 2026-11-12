@@ -8,6 +8,9 @@
  * 只放 USB 规范定义的数据类型和小型工具函数。
  * 不放控制器寄存器、不放描述符生成逻辑、不放任何 CherryUSB 引用。
  *
+ * **本文件属于共享契约层**（见 `contract/README.md`）：底层实现可依赖它，
+ * 上层协议栈可依赖它。P2 步 14 会迁到 `zephyr/contract/`。
+ *
  * @copyright Copyright (c) 2026
  */
 

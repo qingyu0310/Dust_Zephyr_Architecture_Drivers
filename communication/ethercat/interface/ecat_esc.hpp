@@ -17,6 +17,9 @@
  *   | `AlEvent()` | 名字没体现"读即确认" | `ReadAlEvent()` |
  *   | `EepromRead/Write/Reload` | 空壳接口，两种介质在内部选即可 | 并入本接口，模式由 `Config::sii_mode` 决定 |
  *
+ * **本文件属于共享契约层**（见 `contract/README.md`）：底层实现可依赖它，
+ * 上层协议栈可依赖它。P2 步 14 会迁到 `zephyr/contract/`。
+ *
  * @copyright Copyright (c) 2026
  */
 
