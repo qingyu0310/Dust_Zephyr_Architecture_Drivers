@@ -45,67 +45,20 @@ if(CONFIG_DUST_DEV_ENCODER)
     target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/device/encoder)
 endif()
 
-# USB 协议栈（并入 app target，与 can/uart 同构：Kconfig 门禁 → 编译期装配；多板卡 HAL 按门禁隔离）
-if(CONFIG_DUST_USB_DEVICE_STACK)
-    target_sources(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_dev_port.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_cdc_acm.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core/usb_descriptor.cpp)
-    target_include_directories(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core)
-endif()
-
-if(CONFIG_DUST_COM_USB)
-    target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/usb.cpp)
-    target_include_directories(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/core
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/usb/interface
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream/uart
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/stream)
-endif()
-
-# EtherCAT 从站（C++ 实现）
-#
-# core/ 按职责分四层：
-#   spec/     纯数据与常量，无状态（limits / registers / wire / object / application_objects）
-#   model/    对象模型（dictionary）
-#   pdo/      过程数据域（process_data）
-#   mailbox/  邮箱链路（mailbox / sdo / sdo_info / coe / sii_service）
-#   al/       状态机与时基（state_machine / sync / sm）
-#   core/     组合根（device）
-if(CONFIG_DUST_COM_ETHERCAT)
-    target_sources(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/diag/ecat_diagnostics.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/model/ecat_dictionary.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/pdo/ecat_process_data.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_mailbox.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_sdo.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_sdo_info.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_coe.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/mailbox/ecat_sii_service.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/al/ecat_state_machine.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/al/ecat_sync.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/al/ecat_sm.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core/ecat_device.cpp)
-
-    target_include_directories(app PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/core
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/interface)
-endif()
+# USB 协议栈与 EtherCAT 协议栈已迁到 midlayer/（user_midlayer 模块）。
+# 本文件只保留驱动：can / spi / stream(uart, rs485, stream.hpp) / device。
 
 # EtherCAT PHY 设备模块（与 gpio/pwm 同层）
 #
 # 三颗芯片共用 ecat_phy_mdio.cpp，所以公共部分单独一个块，
 # 避免多个门禁同时打开时同一源文件被重复加入 app target。
+# 契约头（ecat_esc.hpp / ecat_types.hpp / ecat_profile.hpp）在 zephyr/contract/。
 if(CONFIG_DUST_DEV_ECAT_PHY_JL1111 OR CONFIG_DUST_DEV_ECAT_PHY_RTL8201F OR CONFIG_DUST_DEV_ECAT_PHY_TJA1101B)
     target_sources(app PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/device/ecat_phy/ecat_phy_mdio.cpp)
     target_include_directories(app PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/device/ecat_phy
-        ${CMAKE_CURRENT_SOURCE_DIR}/communication/ethercat/interface)
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../zephyr/contract)
 endif()
 
 if(CONFIG_DUST_DEV_ECAT_PHY_JL1111)

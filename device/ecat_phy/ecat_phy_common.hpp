@@ -22,15 +22,15 @@ class EcatEsc;
  */
 namespace ecat_phy_reg {	
 
-constexpr uint8_t kBmcr   = 0U;         // Basic Mode Control
-constexpr uint8_t kBmsr   = 1U;         // Basic Mode Status
-constexpr uint8_t kPhyId1 = 2U;         // PHY Identifier 1（OUI 高 16 位）
-constexpr uint8_t kPhyId2 = 3U;         // PHY Identifier 2（OUI 低 6 位 + 型号 + 版本）
-constexpr uint8_t kAnar   = 4U;         // Auto-Negotiation Advertisement
-constexpr uint8_t kAnlpar = 5U;         // Auto-Negotiation Link Partner Ability
+constexpr uint8_t kBmcr   = 0;         // Basic Mode Control
+constexpr uint8_t kBmsr   = 1;         // Basic Mode Status
+constexpr uint8_t kPhyId1 = 2;         // PHY Identifier 1（OUI 高 16 位）
+constexpr uint8_t kPhyId2 = 3;         // PHY Identifier 2（OUI 低 6 位 + 型号 + 版本）
+constexpr uint8_t kAnar   = 4;         // Auto-Negotiation Advertisement
+constexpr uint8_t kAnlpar = 5;         // Auto-Negotiation Link Partner Ability
 
 // MDIO 读失败时总线上读到的值
-constexpr uint16_t kInvalid = 0xFFFFU;
+constexpr uint16_t kInvalid = 0xFFFF;
 
 }
 
@@ -39,15 +39,15 @@ constexpr uint16_t kInvalid = 0xFFFFU;
  */
 namespace ecat_phy_bmcr {
 
-constexpr uint16_t kReset      = 1U << 15;  // 软复位，自清零
-constexpr uint16_t kLoopback   = 1U << 14;  // 环回
-constexpr uint16_t kSpeedLsb   = 1U << 13;  // 速率低位（与 bit6 组合）
-constexpr uint16_t kAnEnable   = 1U << 12;  // 自协商使能
-constexpr uint16_t kPowerDown  = 1U << 11;  // 掉电
-constexpr uint16_t kIsolate    = 1U << 10;  // 隔离 MII
-constexpr uint16_t kAnRestart  = 1U << 9;   // 重启自协商
-constexpr uint16_t kDuplex     = 1U << 8;   // 1=全双工
-constexpr uint16_t kSpeedMsb   = 1U << 6;   // 速率高位（与 bit13 组合）
+constexpr uint16_t kReset      = 1 << 15;  // 软复位，自清零
+constexpr uint16_t kLoopback   = 1 << 14;  // 环回
+constexpr uint16_t kSpeedLsb   = 1 << 13;  // 速率低位（与 bit6 组合）
+constexpr uint16_t kAnEnable   = 1 << 12;  // 自协商使能
+constexpr uint16_t kPowerDown  = 1 << 11;  // 掉电
+constexpr uint16_t kIsolate    = 1 << 10;  // 隔离 MII
+constexpr uint16_t kAnRestart  = 1 << 9;   // 重启自协商
+constexpr uint16_t kDuplex     = 1 << 8;   // 1=全双工
+constexpr uint16_t kSpeedMsb   = 1 << 6;   // 速率高位（与 bit13 组合）
 
 }
 
@@ -56,9 +56,9 @@ constexpr uint16_t kSpeedMsb   = 1U << 6;   // 速率高位（与 bit13 组合�
  */
 namespace ecat_phy_bmsr {
 
-constexpr uint16_t kLink    = 1U << 2;      // 链路状态（latch-low）
-constexpr uint16_t kAnDone  = 1U << 5;      // 自协商完成
-constexpr uint16_t kExtCap  = 1U << 0;      // 支持扩展寄存器
+constexpr uint16_t kLink    = 1 << 2;      // 链路状态（latch-low）
+constexpr uint16_t kAnDone  = 1 << 5;      // 自协商完成
+constexpr uint16_t kExtCap  = 1 << 0;      // 支持扩展寄存器
 
 }
 
@@ -67,11 +67,11 @@ constexpr uint16_t kExtCap  = 1U << 0;      // 支持扩展寄存器
  */
 namespace ecat_phy_anar {
 
-constexpr uint16_t k100Full   = 1U << 8;    // 100BASE-TX 全双工
-constexpr uint16_t k100Half   = 1U << 7;    // 100BASE-TX 半双工
-constexpr uint16_t k10Full    = 1U << 6;    // 10BASE-T 全双工
-constexpr uint16_t k10Half    = 1U << 5;    // 10BASE-T 半双工
-constexpr uint16_t kSelector  = 1U << 0;    // 802.3 CSMA/CD
+constexpr uint16_t k100Full   = 1 << 8;    // 100BASE-TX 全双工
+constexpr uint16_t k100Half   = 1 << 7;    // 100BASE-TX 半双工
+constexpr uint16_t k10Full    = 1 << 6;    // 10BASE-T 全双工
+constexpr uint16_t k10Half    = 1 << 5;    // 10BASE-T 半双工
+constexpr uint16_t kSelector  = 1 << 0;    // 802.3 CSMA/CD
 
 }
 
@@ -132,11 +132,11 @@ public:
 	 */
 	void Bind(EcatEsc& esc, uint8_t addr)
 	{
-		esc_ = &esc;
+		esc_  = &esc;
 		addr_ = addr;
 	}
 
 private:
-	EcatEsc* esc_ = nullptr;	// ESC 硬件，Bind 后有效
+	EcatEsc* esc_  = nullptr;	// ESC 硬件，Bind 后有效
 	uint8_t  addr_ = 0;			// PHY 在 MDIO 上的地址
 };
