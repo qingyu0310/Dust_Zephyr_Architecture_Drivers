@@ -69,10 +69,13 @@ void Can::SetRxCallback(RxCallback cb, void *user_data)
  * @brief 发送 CAN 帧（阻塞）
  * @param frame  CAN 帧
  */
-bool Can::Send(const can_frame *frame)
+bool Can::Send(const can_frame *frame, k_timeout_t timeout)
 {
     if (dev_ == nullptr) return false;
-    int ret = can_send(dev_, frame, K_NO_WAIT, tx_callback, this);
+    int ret = can_send(dev_, frame, timeout, tx_callback, this);
+    if (ret != 0) {
+        DUST_LOG_ERR("can_send ret=%d id=0x%x", ret, static_cast<unsigned>(frame->id));
+    }
     return ret == 0;
 }
 
@@ -82,6 +85,7 @@ bool Can::Send(const can_frame *frame)
 void Can::tx_callback(const device *dev, int error, void *user_data)
 {
     auto *self = static_cast<Can*>(user_data);
+
     if (self->tx_cb_ != nullptr) {
         self->tx_cb_(dev, error, self->tx_cb_data_);
     }
@@ -100,7 +104,7 @@ void Can::rx_callback(const device *dev, can_frame *frame, void *user_data)
 }
 
 /**
- * @brief CAN 状态变化回调 — 打印 error passive / bus-off 等状态
+ * @brief CAN 状态变化回调（error passive / bus-off 诊断）
  */
 void Can::state_callback(const device *dev, can_state state, can_bus_err_cnt err_cnt, void *user_data)
 {

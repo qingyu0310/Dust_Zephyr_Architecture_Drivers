@@ -14,7 +14,6 @@
 
 #pragma message "Compiling Drivers/Device Pwm"
 
-
 /**
  * @brief 初始化 PWM 输出
  * @param spec  设备树 PWM 规格

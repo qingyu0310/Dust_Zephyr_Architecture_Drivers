@@ -93,7 +93,7 @@ public:
     bool Init(const device *dev, const can_filter &filter, can_mode_t ctrl_mode = CAN_MODE_NORMAL);
     void SetTxCallback(TxCallback cb, void *user_data = nullptr);
     void SetRxCallback(RxCallback cb, void *user_data = nullptr);
-    bool Send(const can_frame *frame);
+    bool Send(const can_frame *frame, k_timeout_t timeout = K_FOREVER);
 
     const device *Device() const { return dev_; }
 
