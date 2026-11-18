@@ -103,18 +103,29 @@ config DUST_DEV_ENCODER
         Enable the encoder C++ wrapper in drivers/device/encoder.
         底层实现由子树 drivers/Kconfig 的 DUST_ENCODER 提供。
 
-# SII 介质：板上有没有 I2C EEPROM 由这里决定，板卡 conf 不写
+# SII 介质：固件只读镜像、板载 EEPROM 或 Flash 模拟，由项目配置选择。
+config DUST_ECAT_SII_FLASH_READONLY
+    bool "Flash 只读 SII（EEPROM 仿真）"
+    default n
+    depends on DUST_COM_ETHERCAT
+    help
+      ESC 使用 EEPROM 仿真模式，SII 数据直接来自固件 Flash 中的 const 镜像。
+      软件响应主站读取和 ESC reload，拒绝 SII 写入。
+      不使用可写 Flash EEPROM 分区、擦写管理或 RAM 索引表。
+
 config DUST_ECAT_SII_EEPROM
     bool "板上 I2C EEPROM（CAT24C128 等）"
     default n
     depends on DUST_COM_ETHERCAT
+    depends on !DUST_ECAT_SII_FLASH_READONLY
     select I2C
     help
       SII 存在芯片里，ESC 自己走 I2C 主控，应用层不参与读写。
 
 config DUST_ECAT_SII_FLASH
-    bool "Flash 分区模拟"
+    bool "Flash 分区模拟 EEPROM（可写、持久化）"
     default n
     depends on DUST_COM_ETHERCAT
+    depends on !DUST_ECAT_SII_FLASH_READONLY
     help
       SII 存在 Flash 分区，由应用层接管读写。
