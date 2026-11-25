@@ -198,6 +198,21 @@ public:
 	const Rx& Outputs() const { return outputs_; }
 
 	/**
+	 * @brief 读取指定端口 PHY 的当前链路状态，不等待周期刷新
+	 * @param port ESC 端口号
+	 * @return true=链路正常，false=断链、端口未连接或读取失败
+	 */
+	bool LinkUp(uint8_t port)
+	{
+		if (!device_.IsReady() || port >= kPortCount || phys_[port] == nullptr) {
+			return false;
+		}
+
+		bool up = false;
+		return phys_[port]->LinkUp(*esc_, up) && up;
+	}
+
+	/**
 	 * @brief 写入待发数据
 	 * @param inputs 业务数据（线程侧），下一拍由 PDI ISR 拷出
 	 */
